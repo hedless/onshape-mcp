@@ -2678,6 +2678,123 @@ class TestGetFaceCoordinateSystem:
             assert "unexpected failure" in result[0].text
 
 
+class TestBatchBuilderTools:
+    """Test batch builder MCP tools."""
+
+    @pytest.mark.asyncio
+    @patch("onshape_mcp.server.featurestudio_manager")
+    async def test_deploy_batch_builders(self, mock_fs_manager):
+        mock_fs_manager.deploy_builders = AsyncMock(return_value={"elementId": "fs_elem_123"})
+        result = await call_tool(
+            "deploy_batch_builders",
+            {"documentId": "doc1", "workspaceId": "ws1"},
+        )
+        assert "Deployed MCP batch builders" in result[0].text
+        assert "fs_elem_123" in result[0].text
+
+    @pytest.mark.asyncio
+    @patch("onshape_mcp.server.partstudio_manager")
+    async def test_batch_rect_extrude(self, mock_partstudio):
+        mock_partstudio.add_feature = AsyncMock(
+            return_value={"featureState": {"featureStatus": "OK"}}
+        )
+        result = await call_tool(
+            "batch_rect_extrude",
+            {
+                "documentId": "doc1",
+                "workspaceId": "ws1",
+                "elementId": "elem1",
+                "namespace": "eABC::mDEF",
+                "name": "Test Panel",
+                "corner1": [0, 0],
+                "corner2": [10, 5],
+                "depth": 0.75,
+            },
+        )
+        assert "rectExtrude" in result[0].text
+        assert "Test Panel" in result[0].text
+
+    @pytest.mark.asyncio
+    @patch("onshape_mcp.server.partstudio_manager")
+    async def test_batch_rect_extrude_with_draft(self, mock_partstudio):
+        mock_partstudio.add_feature = AsyncMock(
+            return_value={"featureState": {"featureStatus": "OK"}}
+        )
+        result = await call_tool(
+            "batch_rect_extrude",
+            {
+                "documentId": "doc1",
+                "workspaceId": "ws1",
+                "elementId": "elem1",
+                "namespace": "eABC::mDEF",
+                "name": "Tapered Leg",
+                "plane": "Top",
+                "corner1": [-0.75, -0.75],
+                "corner2": [0.75, 0.75],
+                "depth": 6.5,
+                "draftAngle": 3.0,
+                "draftPullDirection": True,
+            },
+        )
+        assert "rectExtrude" in result[0].text
+
+    @pytest.mark.asyncio
+    @patch("onshape_mcp.server.partstudio_manager")
+    async def test_batch_cabinet_box(self, mock_partstudio):
+        mock_partstudio.add_feature = AsyncMock(
+            return_value={"featureState": {"featureStatus": "OK"}}
+        )
+        result = await call_tool(
+            "batch_cabinet_box",
+            {
+                "documentId": "doc1",
+                "workspaceId": "ws1",
+                "elementId": "elem1",
+                "namespace": "eABC::mDEF",
+                "name": "Center Cabinet",
+                "width": 27.0,
+                "height": 27.0,
+                "depth": 21.5,
+                "panelThickness": 0.75,
+                "hasDivider": True,
+                "hasShelf": True,
+                "shelfHeight": 13.5,
+            },
+        )
+        assert "cabinetBox" in result[0].text
+        assert "Center Cabinet" in result[0].text
+
+    @pytest.mark.asyncio
+    @patch("onshape_mcp.server.partstudio_manager")
+    async def test_batch_poly_extrude(self, mock_partstudio):
+        mock_partstudio.add_feature = AsyncMock(
+            return_value={"featureState": {"featureStatus": "OK"}}
+        )
+        result = await call_tool(
+            "batch_poly_extrude",
+            {
+                "documentId": "doc1",
+                "workspaceId": "ws1",
+                "elementId": "elem1",
+                "namespace": "eABC::mDEF",
+                "name": "Speaker Bay",
+                "vertices": [[0, 0], [7.5, 0], [13.25, 27], [0, 27]],
+                "depth": 21.5,
+            },
+        )
+        assert "polyExtrude" in result[0].text
+        assert "Speaker Bay" in result[0].text
+
+    @pytest.mark.asyncio
+    async def test_batch_tools_listed(self):
+        tools = await list_tools()
+        tool_names = [t.name for t in tools]
+        assert "deploy_batch_builders" in tool_names
+        assert "batch_rect_extrude" in tool_names
+        assert "batch_cabinet_box" in tool_names
+        assert "batch_poly_extrude" in tool_names
+
+
 class TestUnknownTool:
     """Test handling of unknown tools."""
 

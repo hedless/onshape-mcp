@@ -25,6 +25,8 @@ from .builders.extrude import ExtrudeBuilder, ExtrudeType
 from .builders.thicken import ThickenBuilder, ThickenType
 from .api.assemblies import AssemblyManager
 from .api.featurescript import FeatureScriptManager
+from .api.featurestudio import FeatureStudioManager
+from .builders.batch import BatchBuilder
 from .api.export import ExportManager
 from .builders.mate import MateBuilder, MateConnectorBuilder, MateType, build_transform_matrix
 from .builders.fillet import FilletBuilder
@@ -57,6 +59,7 @@ variable_manager = VariableManager(client)
 document_manager = DocumentManager(client)
 assembly_manager = AssemblyManager(client)
 featurescript_manager = FeatureScriptManager(client)
+featurestudio_manager = FeatureStudioManager(client)
 export_manager = ExportManager(client)
 
 
@@ -1250,6 +1253,192 @@ async def list_tools() -> list[Tool]:
                     "elementId": {"type": "string", "description": "Part Studio element ID"},
                 },
                 "required": ["documentId", "workspaceId", "elementId"],
+            },
+        ),
+        # === Batch Builder Tools ===
+        Tool(
+            name="deploy_batch_builders",
+            description="Deploy MCP batch builder FeatureScript to a document. Creates a Feature Studio with custom features (rectExtrude, polyExtrude, cabinetBox) that combine sketch+extrude into single operations, reducing API calls by 2-8x. Only needs to be called once per document. Returns the Feature Studio element ID needed for batch operations.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "documentId": {"type": "string", "description": "Document ID"},
+                    "workspaceId": {"type": "string", "description": "Workspace ID"},
+                    "name": {
+                        "type": "string",
+                        "description": "Name for the Feature Studio",
+                        "default": "MCP Builders",
+                    },
+                },
+                "required": ["documentId", "workspaceId"],
+            },
+        ),
+        Tool(
+            name="batch_rect_extrude",
+            description="Create a rectangular solid in one API call (combines sketch + extrude). Requires deploy_batch_builders to be called first. Use for panels, boards, and simple box shapes.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "documentId": {"type": "string", "description": "Document ID"},
+                    "workspaceId": {"type": "string", "description": "Workspace ID"},
+                    "elementId": {"type": "string", "description": "Part Studio element ID"},
+                    "namespace": {
+                        "type": "string",
+                        "description": "Feature Studio namespace (from deploy_batch_builders or get_feature_studio_specs)",
+                    },
+                    "name": {"type": "string", "description": "Feature name"},
+                    "plane": {
+                        "type": "string",
+                        "enum": ["Front", "Top", "Right"],
+                        "default": "Front",
+                        "description": "Sketch plane",
+                    },
+                    "corner1": {
+                        "type": "array",
+                        "items": {"type": "number"},
+                        "minItems": 2,
+                        "maxItems": 2,
+                        "description": "First corner [x, y] in inches",
+                    },
+                    "corner2": {
+                        "type": "array",
+                        "items": {"type": "number"},
+                        "minItems": 2,
+                        "maxItems": 2,
+                        "description": "Second corner [x, y] in inches",
+                    },
+                    "depth": {"type": "number", "description": "Extrude depth in inches"},
+                    "operationType": {
+                        "type": "string",
+                        "enum": ["NEW", "ADD", "REMOVE"],
+                        "default": "NEW",
+                        "description": "Extrude operation type",
+                    },
+                    "draftAngle": {
+                        "type": "number",
+                        "description": "Optional draft angle in degrees",
+                    },
+                    "draftPullDirection": {
+                        "type": "boolean",
+                        "default": False,
+                        "description": "Draft direction: false=inward, true=outward",
+                    },
+                },
+                "required": [
+                    "documentId",
+                    "workspaceId",
+                    "elementId",
+                    "namespace",
+                    "name",
+                    "corner1",
+                    "corner2",
+                    "depth",
+                ],
+            },
+        ),
+        Tool(
+            name="batch_cabinet_box",
+            description="Create a complete cabinet box in one API call (outer shell + cavity + optional divider + optional shelf). Requires deploy_batch_builders. Replaces 4-8 separate sketch+extrude operations.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "documentId": {"type": "string", "description": "Document ID"},
+                    "workspaceId": {"type": "string", "description": "Workspace ID"},
+                    "elementId": {"type": "string", "description": "Part Studio element ID"},
+                    "namespace": {
+                        "type": "string",
+                        "description": "Feature Studio namespace",
+                    },
+                    "name": {"type": "string", "description": "Feature name"},
+                    "width": {"type": "number", "description": "Cabinet width in inches"},
+                    "height": {"type": "number", "description": "Cabinet height in inches"},
+                    "depth": {"type": "number", "description": "Cabinet depth in inches"},
+                    "panelThickness": {
+                        "type": "number",
+                        "description": "Wall/panel thickness in inches",
+                    },
+                    "centeredX": {
+                        "type": "boolean",
+                        "default": True,
+                        "description": "Center cabinet on X axis",
+                    },
+                    "hasDivider": {
+                        "type": "boolean",
+                        "default": False,
+                        "description": "Add vertical center divider",
+                    },
+                    "hasShelf": {
+                        "type": "boolean",
+                        "default": False,
+                        "description": "Add horizontal shelf",
+                    },
+                    "shelfHeight": {
+                        "type": "number",
+                        "description": "Shelf height from bottom in inches (required if hasShelf)",
+                    },
+                },
+                "required": [
+                    "documentId",
+                    "workspaceId",
+                    "elementId",
+                    "namespace",
+                    "name",
+                    "width",
+                    "height",
+                    "depth",
+                    "panelThickness",
+                ],
+            },
+        ),
+        Tool(
+            name="batch_poly_extrude",
+            description="Create a polygon solid in one API call (polygon sketch + extrude). Requires deploy_batch_builders. Use for trapezoids, triangles, and irregular shapes.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "documentId": {"type": "string", "description": "Document ID"},
+                    "workspaceId": {"type": "string", "description": "Workspace ID"},
+                    "elementId": {"type": "string", "description": "Part Studio element ID"},
+                    "namespace": {
+                        "type": "string",
+                        "description": "Feature Studio namespace",
+                    },
+                    "name": {"type": "string", "description": "Feature name"},
+                    "plane": {
+                        "type": "string",
+                        "enum": ["Front", "Top", "Right"],
+                        "default": "Front",
+                        "description": "Sketch plane",
+                    },
+                    "vertices": {
+                        "type": "array",
+                        "items": {
+                            "type": "array",
+                            "items": {"type": "number"},
+                            "minItems": 2,
+                            "maxItems": 2,
+                        },
+                        "minItems": 3,
+                        "maxItems": 8,
+                        "description": "Vertex coordinates [[x1,y1], [x2,y2], ...] in inches",
+                    },
+                    "depth": {"type": "number", "description": "Extrude depth in inches"},
+                    "operationType": {
+                        "type": "string",
+                        "enum": ["NEW", "ADD", "REMOVE"],
+                        "default": "NEW",
+                        "description": "Extrude operation type",
+                    },
+                },
+                "required": [
+                    "documentId",
+                    "workspaceId",
+                    "elementId",
+                    "namespace",
+                    "name",
+                    "vertices",
+                    "depth",
+                ],
             },
         ),
         # === Export Tools ===
@@ -3106,6 +3295,112 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent]:
             ]
         except Exception as e:
             return [TextContent(type="text", text=f"Error getting bounding box: {str(e)}")]
+
+    # === Batch Builder Handlers ===
+    elif name == "deploy_batch_builders":
+        try:
+            result = await featurestudio_manager.deploy_builders(
+                document_id=arguments["documentId"],
+                workspace_id=arguments["workspaceId"],
+                name=arguments.get("name", "MCP Builders"),
+            )
+            element_id = result.get("elementId", "unknown")
+            return [
+                TextContent(
+                    type="text",
+                    text=f"Deployed MCP batch builders to Feature Studio.\n"
+                    f"Element ID: {element_id}\n"
+                    f"Use get_feature_studio_specs to get the namespace for batch operations.",
+                )
+            ]
+        except Exception as e:
+            return [TextContent(type="text", text=f"Error deploying builders: {str(e)}")]
+
+    elif name == "batch_rect_extrude":
+        try:
+            batch = BatchBuilder(namespace=arguments["namespace"])
+            feature_data = batch.rect_extrude(
+                name=arguments["name"],
+                plane=arguments.get("plane", "Front"),
+                corner1=tuple(arguments["corner1"]),
+                corner2=tuple(arguments["corner2"]),
+                depth=arguments["depth"],
+                operation_type=arguments.get("operationType", "NEW"),
+                draft_angle=arguments.get("draftAngle"),
+                draft_pull_direction=arguments.get("draftPullDirection", False),
+            )
+            result = await partstudio_manager.add_feature(
+                document_id=arguments["documentId"],
+                workspace_id=arguments["workspaceId"],
+                element_id=arguments["elementId"],
+                feature=feature_data,
+            )
+            status = result.get("featureState", {}).get("featureStatus", "unknown")
+            return [
+                TextContent(
+                    type="text",
+                    text=f"Created batch rectExtrude '{arguments['name']}'. Status: {status}",
+                )
+            ]
+        except Exception as e:
+            return [TextContent(type="text", text=f"Error in batch_rect_extrude: {str(e)}")]
+
+    elif name == "batch_cabinet_box":
+        try:
+            batch = BatchBuilder(namespace=arguments["namespace"])
+            feature_data = batch.cabinet_box(
+                name=arguments["name"],
+                width=arguments["width"],
+                height=arguments["height"],
+                depth=arguments["depth"],
+                panel_thickness=arguments["panelThickness"],
+                centered_x=arguments.get("centeredX", True),
+                has_divider=arguments.get("hasDivider", False),
+                has_shelf=arguments.get("hasShelf", False),
+                shelf_height=arguments.get("shelfHeight"),
+            )
+            result = await partstudio_manager.add_feature(
+                document_id=arguments["documentId"],
+                workspace_id=arguments["workspaceId"],
+                element_id=arguments["elementId"],
+                feature=feature_data,
+            )
+            status = result.get("featureState", {}).get("featureStatus", "unknown")
+            return [
+                TextContent(
+                    type="text",
+                    text=f"Created batch cabinetBox '{arguments['name']}'. Status: {status}",
+                )
+            ]
+        except Exception as e:
+            return [TextContent(type="text", text=f"Error in batch_cabinet_box: {str(e)}")]
+
+    elif name == "batch_poly_extrude":
+        try:
+            batch = BatchBuilder(namespace=arguments["namespace"])
+            vertices = [tuple(v) for v in arguments["vertices"]]
+            feature_data = batch.poly_extrude(
+                name=arguments["name"],
+                plane=arguments.get("plane", "Front"),
+                vertices=vertices,
+                depth=arguments["depth"],
+                operation_type=arguments.get("operationType", "NEW"),
+            )
+            result = await partstudio_manager.add_feature(
+                document_id=arguments["documentId"],
+                workspace_id=arguments["workspaceId"],
+                element_id=arguments["elementId"],
+                feature=feature_data,
+            )
+            status = result.get("featureState", {}).get("featureStatus", "unknown")
+            return [
+                TextContent(
+                    type="text",
+                    text=f"Created batch polyExtrude '{arguments['name']}'. Status: {status}",
+                )
+            ]
+        except Exception as e:
+            return [TextContent(type="text", text=f"Error in batch_poly_extrude: {str(e)}")]
 
     elif name == "export_part_studio":
         try:
