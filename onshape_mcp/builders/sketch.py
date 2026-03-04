@@ -13,6 +13,15 @@ class SketchPlane(Enum):
     RIGHT = "Right"
 
 
+# Reference planes for anchoring sketches to the origin.
+# Maps sketch plane to the deterministic IDs of the planes that control X/Y positioning.
+REFERENCE_PLANES = {
+    SketchPlane.FRONT: {"x": "JEC", "y": "JDC"},  # Right, Top
+    SketchPlane.TOP: {"x": "JEC", "y": "JCC"},  # Right, Front
+    SketchPlane.RIGHT: {"x": "JCC", "y": "JDC"},  # Front, Top
+}
+
+
 class SketchBuilder:
     """Builder for creating Onshape sketch features in BTMSketch-151 format."""
 
@@ -54,17 +63,24 @@ class SketchBuilder:
         corner2: Tuple[float, float],
         variable_width: Optional[str] = None,
         variable_height: Optional[str] = None,
+        anchor_x: Optional[str] = None,
+        anchor_y: Optional[str] = None,
     ) -> "SketchBuilder":
         """Add a rectangle to the sketch with proper Onshape format.
 
         Creates 4 line entities with appropriate constraints (perpendicular,
-        parallel, coincident, horizontal, and optional dimensional constraints).
+        parallel, coincident, horizontal, vertical, and optional dimensional
+        and anchor constraints).
 
         Args:
             corner1: First corner (x, y) in inches
             corner2: Opposite corner (x, y) in inches
             variable_width: Optional variable name for width
             variable_height: Optional variable name for height
+            anchor_x: Optional expression to anchor left edge X position
+                (e.g., "5 in", "#offset_x"). Creates DISTANCE to reference plane.
+            anchor_y: Optional expression to anchor bottom edge Y position
+                (e.g., "3 in", "#offset_y"). Creates DISTANCE to reference plane.
 
         Returns:
             Self for chaining
@@ -259,6 +275,22 @@ class SketchBuilder:
             }
         )
 
+        # 3b. Vertical constraint for left line
+        self.constraints.append(
+            {
+                "btType": "BTMSketchConstraint-2",
+                "constraintType": "VERTICAL",
+                "entityId": f"{rect_id}.vertical",
+                "parameters": [
+                    {
+                        "btType": "BTMParameterString-149",
+                        "value": left_id,
+                        "parameterId": "localFirst",
+                    }
+                ],
+            }
+        )
+
         # 4. Coincident constraints at corners
         corners = [
             (point_ids["bottom_start"], point_ids["left_end"], "corner0"),
@@ -356,6 +388,13 @@ class SketchBuilder:
                     ],
                 }
             )
+
+        # 6. Anchor constraints (DISTANCE to reference planes)
+        ref_planes = REFERENCE_PLANES.get(self.plane, {})
+        if anchor_x and ref_planes:
+            self.add_distance_constraint(left_id, anchor_x, ref_planes["x"])
+        if anchor_y and ref_planes:
+            self.add_distance_constraint(bottom_id, anchor_y, ref_planes["y"])
 
         return self
 
@@ -633,6 +672,376 @@ class SketchBuilder:
             end = vertices[(i + 1) % sides]
             self.add_line(start, end, is_construction=is_construction)
 
+        return self
+
+    def add_polyline(
+        self,
+        points: List[Tuple[float, float]],
+        closed: bool = True,
+        is_construction: bool = False,
+        variable_lengths: Optional[List[Optional[str]]] = None,
+        anchor_x: Optional[str] = None,
+        anchor_y: Optional[str] = None,
+        horizontal_edges: Optional[List[int]] = None,
+        vertical_edges: Optional[List[int]] = None,
+    ) -> "SketchBuilder":
+        """Add connected line segments forming a polyline or closed polygon.
+
+        Creates line segments between consecutive points. If closed, also
+        connects the last point back to the first and adds COINCIDENT
+        constraints at all vertices to form a closed region suitable for
+        thicken or extrude.
+
+        Args:
+            points: List of (x, y) vertices in inches, in order.
+                    Must have at least 3 points for a closed polygon,
+                    or at least 2 for an open polyline.
+            closed: If True, connects last point back to first and adds
+                    COINCIDENT constraints at all vertices.
+            is_construction: Whether this is construction geometry.
+            variable_lengths: Optional list of expressions for per-segment
+                LENGTH constraints. Each entry is None (skip) or a raw
+                Onshape expression (e.g., "#panel_width"). Must match
+                segment count if provided.
+            anchor_x: Optional expression to anchor first vertex X position
+                via DISTANCE constraint to reference plane.
+            anchor_y: Optional expression to anchor first vertex Y position
+                via DISTANCE constraint to reference plane.
+            horizontal_edges: Optional list of 0-based segment indices that
+                should have HORIZONTAL constraints (e.g., [0, 2] for bottom
+                and top of a trapezoid).
+            vertical_edges: Optional list of 0-based segment indices that
+                should have VERTICAL constraints (e.g., [3] for left side).
+
+        Returns:
+            Self for chaining
+
+        Raises:
+            ValueError: If too few points are provided or variable_lengths
+                has wrong length.
+        """
+        min_points = 3 if closed else 2
+        if len(points) < min_points:
+            raise ValueError(
+                f"Polyline requires at least {min_points} points "
+                f"({'closed' if closed else 'open'}), got {len(points)}"
+            )
+
+        # Track entity indices before adding lines so we can find them after
+        start_entity_idx = len(self.entities)
+
+        # Add line segments between consecutive points
+        n = len(points)
+        segment_count = n if closed else n - 1
+
+        if variable_lengths is not None and len(variable_lengths) != segment_count:
+            raise ValueError(
+                f"variable_lengths must have {segment_count} entries "
+                f"(one per segment), got {len(variable_lengths)}"
+            )
+
+        for i in range(segment_count):
+            self.add_line(
+                start=points[i],
+                end=points[(i + 1) % n],
+                is_construction=is_construction,
+            )
+
+        # Get the line entities we just added
+        line_entities = self.entities[start_entity_idx:]
+
+        # Generate a unique polyline ID for constraint naming
+        poly_id = self._generate_entity_id("polyline")
+
+        # Add COINCIDENT constraints at each vertex connecting consecutive lines
+        for i in range(len(line_entities) - 1):
+            self.constraints.append(
+                {
+                    "btType": "BTMSketchConstraint-2",
+                    "constraintType": "COINCIDENT",
+                    "entityId": f"{poly_id}.corner{i}",
+                    "parameters": [
+                        {
+                            "btType": "BTMParameterString-149",
+                            "value": line_entities[i]["endPointId"],
+                            "parameterId": "localFirst",
+                        },
+                        {
+                            "btType": "BTMParameterString-149",
+                            "value": line_entities[i + 1]["startPointId"],
+                            "parameterId": "localSecond",
+                        },
+                    ],
+                }
+            )
+
+        # If closed, also constrain last line's end to first line's start
+        if closed:
+            self.constraints.append(
+                {
+                    "btType": "BTMSketchConstraint-2",
+                    "constraintType": "COINCIDENT",
+                    "entityId": f"{poly_id}.corner{len(line_entities) - 1}",
+                    "parameters": [
+                        {
+                            "btType": "BTMParameterString-149",
+                            "value": line_entities[-1]["endPointId"],
+                            "parameterId": "localFirst",
+                        },
+                        {
+                            "btType": "BTMParameterString-149",
+                            "value": line_entities[0]["startPointId"],
+                            "parameterId": "localSecond",
+                        },
+                    ],
+                }
+            )
+
+        # Add per-segment LENGTH constraints if provided
+        if variable_lengths:
+            for i, expr in enumerate(variable_lengths):
+                if expr is not None:
+                    self.add_length_constraint(line_entities[i]["entityId"], expr)
+
+        # Anchor constraints (DISTANCE to reference planes) on first segment's start
+        ref_planes = REFERENCE_PLANES.get(self.plane, {})
+        if anchor_x and ref_planes:
+            self.add_distance_constraint(
+                line_entities[0]["startPointId"], anchor_x, ref_planes["x"]
+            )
+        if anchor_y and ref_planes:
+            self.add_distance_constraint(
+                line_entities[0]["startPointId"], anchor_y, ref_planes["y"]
+            )
+
+        # Orientation constraints (HORIZONTAL/VERTICAL) on specified edges
+        if horizontal_edges:
+            for idx in horizontal_edges:
+                self.add_horizontal_constraint(line_entities[idx]["entityId"])
+        if vertical_edges:
+            for idx in vertical_edges:
+                self.add_vertical_constraint(line_entities[idx]["entityId"])
+
+        return self
+
+    # --- Public constraint methods ---
+
+    def add_horizontal_constraint(self, entity_id: str) -> "SketchBuilder":
+        """Add a HORIZONTAL constraint to a line entity.
+
+        Args:
+            entity_id: The entity ID of the line (e.g., "rect.1.bottom")
+
+        Returns:
+            Self for chaining
+        """
+        constraint_id = self._generate_entity_id("constraint")
+        self.constraints.append(
+            {
+                "btType": "BTMSketchConstraint-2",
+                "constraintType": "HORIZONTAL",
+                "entityId": constraint_id,
+                "parameters": [
+                    {
+                        "btType": "BTMParameterString-149",
+                        "value": entity_id,
+                        "parameterId": "localFirst",
+                    }
+                ],
+            }
+        )
+        return self
+
+    def add_vertical_constraint(self, entity_id: str) -> "SketchBuilder":
+        """Add a VERTICAL constraint to a line entity.
+
+        Args:
+            entity_id: The entity ID of the line (e.g., "rect.1.left")
+
+        Returns:
+            Self for chaining
+        """
+        constraint_id = self._generate_entity_id("constraint")
+        self.constraints.append(
+            {
+                "btType": "BTMSketchConstraint-2",
+                "constraintType": "VERTICAL",
+                "entityId": constraint_id,
+                "parameters": [
+                    {
+                        "btType": "BTMParameterString-149",
+                        "value": entity_id,
+                        "parameterId": "localFirst",
+                    }
+                ],
+            }
+        )
+        return self
+
+    def add_length_constraint(self, entity_id: str, length_expression: str) -> "SketchBuilder":
+        """Add a LENGTH dimensional constraint to a line entity.
+
+        Args:
+            entity_id: The entity ID of the line (e.g., "line.1")
+            length_expression: Raw Onshape expression (e.g., "10 in", "#panel_width")
+
+        Returns:
+            Self for chaining
+        """
+        constraint_id = self._generate_entity_id("constraint")
+        self.constraints.append(
+            {
+                "btType": "BTMSketchConstraint-2",
+                "constraintType": "LENGTH",
+                "entityId": constraint_id,
+                "parameters": [
+                    {
+                        "btType": "BTMParameterString-149",
+                        "value": entity_id,
+                        "parameterId": "localFirst",
+                    },
+                    {
+                        "btType": "BTMParameterEnum-145",
+                        "value": "MINIMUM",
+                        "enumName": "DimensionDirection",
+                        "parameterId": "direction",
+                    },
+                    {
+                        "btType": "BTMParameterQuantity-147",
+                        "expression": length_expression,
+                        "parameterId": "length",
+                        "isInteger": False,
+                    },
+                    {
+                        "btType": "BTMParameterEnum-145",
+                        "value": "ALIGNED",
+                        "enumName": "DimensionAlignment",
+                        "parameterId": "alignment",
+                    },
+                ],
+            }
+        )
+        return self
+
+    def add_distance_constraint(
+        self,
+        entity_id: str,
+        distance_expression: str,
+        reference_plane_id: str,
+    ) -> "SketchBuilder":
+        """Add a DISTANCE constraint anchoring a sketch entity to a reference plane.
+
+        Args:
+            entity_id: Local sketch entity ID (e.g., "rect.1.left", "line.1")
+            distance_expression: Onshape expression (e.g., "5 in", "#width/2")
+            reference_plane_id: Deterministic ID of the reference plane
+                (e.g., "JCC" for Front, "JDC" for Top, "JEC" for Right)
+
+        Returns:
+            Self for chaining
+        """
+        constraint_id = self._generate_entity_id("constraint")
+        self.constraints.append(
+            {
+                "btType": "BTMSketchConstraint-2",
+                "constraintType": "DISTANCE",
+                "entityId": constraint_id,
+                "parameters": [
+                    {
+                        "btType": "BTMParameterQueryList-148",
+                        "parameterId": "externalFirst",
+                        "queries": [
+                            {
+                                "btType": "BTMIndividualQuery-138",
+                                "deterministicIds": [reference_plane_id],
+                            }
+                        ],
+                    },
+                    {
+                        "btType": "BTMParameterString-149",
+                        "value": entity_id,
+                        "parameterId": "localSecond",
+                    },
+                    {
+                        "btType": "BTMParameterQuantity-147",
+                        "expression": distance_expression,
+                        "parameterId": "length",
+                    },
+                ],
+            }
+        )
+        return self
+
+    def add_fix_constraint(self, point_id: str) -> "SketchBuilder":
+        """Add a FIX constraint to lock a point at its current position.
+
+        Args:
+            point_id: The point ID (e.g., "line.1.start", "rect.1.bottom.start")
+
+        Returns:
+            Self for chaining
+        """
+        constraint_id = self._generate_entity_id("constraint")
+        self.constraints.append(
+            {
+                "btType": "BTMSketchConstraint-2",
+                "constraintType": "FIX",
+                "entityId": constraint_id,
+                "parameters": [
+                    {
+                        "btType": "BTMParameterString-149",
+                        "value": point_id,
+                        "parameterId": "localFirst",
+                    }
+                ],
+            }
+        )
+        return self
+
+    def add_constraint(
+        self,
+        constraint_type: str,
+        first_id: str,
+        second_id: Optional[str] = None,
+    ) -> "SketchBuilder":
+        """Add a geometric constraint between one or two sketch entities.
+
+        Supports: COINCIDENT, PERPENDICULAR, PARALLEL, HORIZONTAL, VERTICAL,
+                  EQUAL, TANGENT, MIDPOINT, CONCENTRIC, FIX
+
+        Args:
+            constraint_type: Constraint type string (e.g., "EQUAL", "PARALLEL")
+            first_id: First entity/point ID
+            second_id: Second entity/point ID (not needed for HORIZONTAL, VERTICAL, FIX)
+
+        Returns:
+            Self for chaining
+        """
+        constraint_id = self._generate_entity_id("constraint")
+        params = [
+            {
+                "btType": "BTMParameterString-149",
+                "value": first_id,
+                "parameterId": "localFirst",
+            }
+        ]
+        if second_id:
+            params.append(
+                {
+                    "btType": "BTMParameterString-149",
+                    "value": second_id,
+                    "parameterId": "localSecond",
+                }
+            )
+
+        self.constraints.append(
+            {
+                "btType": "BTMSketchConstraint-2",
+                "constraintType": constraint_type,
+                "entityId": constraint_id,
+                "parameters": params,
+            }
+        )
         return self
 
     def build(self, plane_id: Optional[str] = None) -> Dict[str, Any]:

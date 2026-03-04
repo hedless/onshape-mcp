@@ -15,7 +15,10 @@ class TestExtractOffsets:
     """Test the _extract_offsets helper."""
 
     def test_all_zero_returns_none(self):
-        assert _extract_offsets({"firstOffsetX": 0, "firstOffsetY": 0, "firstOffsetZ": 0}, "first") is None
+        assert (
+            _extract_offsets({"firstOffsetX": 0, "firstOffsetY": 0, "firstOffsetZ": 0}, "first")
+            is None
+        )
 
     def test_missing_keys_returns_none(self):
         assert _extract_offsets({}, "first") is None
@@ -124,6 +127,7 @@ class TestListTools:
 
         assert "create_sketch_circle" in tool_names
         assert "create_sketch_line" in tool_names
+        assert "create_sketch_polygon" in tool_names
         assert "create_sketch_arc" in tool_names
         assert "create_fillet" in tool_names
         assert "create_chamfer" in tool_names
@@ -571,6 +575,7 @@ class TestDocumentOperations:
     async def test_list_documents_success(self, mock_document_manager):
         """Test successful document listing."""
         from datetime import datetime
+
         mock_docs = [
             DocumentInfo(
                 id="doc1",
@@ -621,6 +626,7 @@ class TestDocumentOperations:
     async def test_search_documents_success(self, mock_document_manager):
         """Test successful document search."""
         from datetime import datetime
+
         mock_docs = [
             DocumentInfo(
                 id="doc1",
@@ -644,6 +650,7 @@ class TestDocumentOperations:
     async def test_get_document_success(self, mock_document_manager):
         """Test successful document retrieval."""
         from datetime import datetime
+
         mock_doc = DocumentInfo(
             id="doc123",
             name="Test Document",
@@ -665,6 +672,7 @@ class TestDocumentOperations:
     async def test_get_document_summary_success(self, mock_document_manager):
         """Test successful document summary retrieval."""
         from datetime import datetime
+
         # get_document_summary returns a structured dict with document and workspace details
         mock_summary = {
             "document": DocumentInfo(
@@ -911,9 +919,7 @@ class TestCreateDocumentTool:
         mock_response.status_code = 403
         mock_response.text = "Forbidden"
         mock_document_manager.create_document = AsyncMock(
-            side_effect=httpx.HTTPStatusError(
-                "Forbidden", request=Mock(), response=mock_response
-            )
+            side_effect=httpx.HTTPStatusError("Forbidden", request=Mock(), response=mock_response)
         )
 
         arguments = {"name": "Forbidden Doc"}
@@ -928,9 +934,7 @@ class TestCreateDocumentTool:
     @patch("onshape_mcp.server.document_manager")
     async def test_create_document_generic_error(self, mock_document_manager):
         """Test document creation with generic error."""
-        mock_document_manager.create_document = AsyncMock(
-            side_effect=Exception("Unexpected error")
-        )
+        mock_document_manager.create_document = AsyncMock(side_effect=Exception("Unexpected error"))
 
         arguments = {"name": "Error Doc"}
 
@@ -973,9 +977,7 @@ class TestCreatePartStudioTool:
         mock_response.status_code = 404
         mock_response.text = "Document not found"
         mock_partstudio.create_part_studio = AsyncMock(
-            side_effect=httpx.HTTPStatusError(
-                "Not Found", request=Mock(), response=mock_response
-            )
+            side_effect=httpx.HTTPStatusError("Not Found", request=Mock(), response=mock_response)
         )
 
         arguments = {
@@ -994,9 +996,7 @@ class TestCreatePartStudioTool:
     @patch("onshape_mcp.server.partstudio_manager")
     async def test_create_part_studio_generic_error(self, mock_partstudio):
         """Test Part Studio creation with generic error."""
-        mock_partstudio.create_part_studio = AsyncMock(
-            side_effect=Exception("Unexpected error")
-        )
+        mock_partstudio.create_part_studio = AsyncMock(side_effect=Exception("Unexpected error"))
 
         arguments = {
             "documentId": "doc123",
@@ -1037,9 +1037,14 @@ class TestAssemblyTools:
         """Test assembly creation error."""
         mock_asm.create_assembly = AsyncMock(side_effect=Exception("API Error"))
 
-        result = await call_tool("create_assembly", {
-            "documentId": "d", "workspaceId": "w", "name": "A",
-        })
+        result = await call_tool(
+            "create_assembly",
+            {
+                "documentId": "d",
+                "workspaceId": "w",
+                "name": "A",
+            },
+        )
 
         assert "Error" in result[0].text
 
@@ -1068,10 +1073,15 @@ class TestAssemblyTools:
         """Test add instance error."""
         mock_asm.add_instance = AsyncMock(side_effect=Exception("fail"))
 
-        result = await call_tool("add_assembly_instance", {
-            "documentId": "d", "workspaceId": "w", "elementId": "e",
-            "partStudioElementId": "ps",
-        })
+        result = await call_tool(
+            "add_assembly_instance",
+            {
+                "documentId": "d",
+                "workspaceId": "w",
+                "elementId": "e",
+                "partStudioElementId": "ps",
+            },
+        )
 
         assert "Error" in result[0].text
 
@@ -1102,10 +1112,15 @@ class TestAssemblyTools:
         """Test transform instance error."""
         mock_asm.transform_occurrences = AsyncMock(side_effect=Exception("fail"))
 
-        result = await call_tool("transform_instance", {
-            "documentId": "d", "workspaceId": "w", "elementId": "e",
-            "instanceId": "i",
-        })
+        result = await call_tool(
+            "transform_instance",
+            {
+                "documentId": "d",
+                "workspaceId": "w",
+                "elementId": "e",
+                "instanceId": "i",
+            },
+        )
 
         assert "Error" in result[0].text
 
@@ -1151,11 +1166,16 @@ class TestAssemblyTools:
         )
 
         arguments = {
-            "documentId": "d", "workspaceId": "w", "elementId": "e",
-            "firstInstanceId": "inst1", "secondInstanceId": "inst2",
-            "firstFaceId": "JHW", "secondFaceId": "JKW",
+            "documentId": "d",
+            "workspaceId": "w",
+            "elementId": "e",
+            "firstInstanceId": "inst1",
+            "secondInstanceId": "inst2",
+            "firstFaceId": "JHW",
+            "secondFaceId": "JKW",
             "name": "Offset Mate",
-            "firstOffsetX": 2.5, "firstOffsetY": -1.0,
+            "firstOffsetX": 2.5,
+            "firstOffsetY": -1.0,
             "secondOffsetZ": 0.5,
         }
 
@@ -1178,11 +1198,18 @@ class TestAssemblyTools:
         """Test fastened mate error."""
         mock_asm.add_feature = AsyncMock(side_effect=Exception("fail"))
 
-        result = await call_tool("create_fastened_mate", {
-            "documentId": "d", "workspaceId": "w", "elementId": "e",
-            "firstInstanceId": "a", "secondInstanceId": "b",
-            "firstFaceId": "f1", "secondFaceId": "f2",
-        })
+        result = await call_tool(
+            "create_fastened_mate",
+            {
+                "documentId": "d",
+                "workspaceId": "w",
+                "elementId": "e",
+                "firstInstanceId": "a",
+                "secondInstanceId": "b",
+                "firstFaceId": "f1",
+                "secondFaceId": "f2",
+            },
+        )
 
         assert "Error" in result[0].text
 
@@ -1243,11 +1270,18 @@ class TestAssemblyTools:
     async def test_create_slider_mate_error(self, mock_asm):
         """Test slider mate error."""
         mock_asm.add_feature = AsyncMock(side_effect=Exception("fail"))
-        result = await call_tool("create_slider_mate", {
-            "documentId": "d", "workspaceId": "w", "elementId": "e",
-            "firstInstanceId": "a", "secondInstanceId": "b",
-            "firstFaceId": "f1", "secondFaceId": "f2",
-        })
+        result = await call_tool(
+            "create_slider_mate",
+            {
+                "documentId": "d",
+                "workspaceId": "w",
+                "elementId": "e",
+                "firstInstanceId": "a",
+                "secondInstanceId": "b",
+                "firstFaceId": "f1",
+                "secondFaceId": "f2",
+            },
+        )
         assert "Error" in result[0].text
 
     @pytest.mark.asyncio
@@ -1310,20 +1344,25 @@ class TestAssemblyTools:
     async def test_create_cylindrical_mate_error(self, mock_asm):
         """Test cylindrical mate error."""
         mock_asm.add_feature = AsyncMock(side_effect=Exception("fail"))
-        result = await call_tool("create_cylindrical_mate", {
-            "documentId": "d", "workspaceId": "w", "elementId": "e",
-            "firstInstanceId": "a", "secondInstanceId": "b",
-            "firstFaceId": "f1", "secondFaceId": "f2",
-        })
+        result = await call_tool(
+            "create_cylindrical_mate",
+            {
+                "documentId": "d",
+                "workspaceId": "w",
+                "elementId": "e",
+                "firstInstanceId": "a",
+                "secondInstanceId": "b",
+                "firstFaceId": "f1",
+                "secondFaceId": "f2",
+            },
+        )
         assert "Error" in result[0].text
 
     @pytest.mark.asyncio
     @patch("onshape_mcp.server.assembly_manager")
     async def test_create_mate_connector_success(self, mock_asm):
         """Test creating a mate connector."""
-        mock_asm.add_feature = AsyncMock(
-            return_value={"feature": {"featureId": "mc123"}}
-        )
+        mock_asm.add_feature = AsyncMock(return_value={"feature": {"featureId": "mc123"}})
         arguments = {
             "documentId": "doc123",
             "workspaceId": "ws123",
@@ -1340,9 +1379,7 @@ class TestAssemblyTools:
     @patch("onshape_mcp.server.assembly_manager")
     async def test_create_mate_connector_default_values(self, mock_asm):
         """Test mate connector with defaults."""
-        mock_asm.add_feature = AsyncMock(
-            return_value={"feature": {"featureId": "mc456"}}
-        )
+        mock_asm.add_feature = AsyncMock(return_value={"feature": {"featureId": "mc456"}})
         arguments = {
             "documentId": "doc123",
             "workspaceId": "ws123",
@@ -1358,10 +1395,16 @@ class TestAssemblyTools:
     async def test_create_mate_connector_error(self, mock_asm):
         """Test mate connector error."""
         mock_asm.add_feature = AsyncMock(side_effect=Exception("fail"))
-        result = await call_tool("create_mate_connector", {
-            "documentId": "d", "workspaceId": "w", "elementId": "e",
-            "instanceId": "i", "faceId": "f1",
-        })
+        result = await call_tool(
+            "create_mate_connector",
+            {
+                "documentId": "d",
+                "workspaceId": "w",
+                "elementId": "e",
+                "instanceId": "i",
+                "faceId": "f1",
+            },
+        )
         assert "Error" in result[0].text
 
     @pytest.mark.asyncio
@@ -1404,11 +1447,18 @@ class TestAssemblyTools:
     async def test_create_revolute_mate_error(self, mock_asm):
         """Test revolute mate error."""
         mock_asm.add_feature = AsyncMock(side_effect=Exception("fail"))
-        result = await call_tool("create_revolute_mate", {
-            "documentId": "d", "workspaceId": "w", "elementId": "e",
-            "firstInstanceId": "a", "secondInstanceId": "b",
-            "firstFaceId": "f1", "secondFaceId": "f2",
-        })
+        result = await call_tool(
+            "create_revolute_mate",
+            {
+                "documentId": "d",
+                "workspaceId": "w",
+                "elementId": "e",
+                "firstInstanceId": "a",
+                "secondInstanceId": "b",
+                "firstFaceId": "f1",
+                "secondFaceId": "f2",
+            },
+        )
         assert "Error" in result[0].text
 
     @pytest.mark.asyncio
@@ -1455,11 +1505,18 @@ class TestAssemblyTools:
                 {"feature": {"featureId": "s789"}},
             ]
         )
-        await call_tool("create_slider_mate", {
-            "documentId": "d", "workspaceId": "w", "elementId": "e",
-            "firstInstanceId": "a", "secondInstanceId": "b",
-            "firstFaceId": "f1", "secondFaceId": "f2",
-        })
+        await call_tool(
+            "create_slider_mate",
+            {
+                "documentId": "d",
+                "workspaceId": "w",
+                "elementId": "e",
+                "firstInstanceId": "a",
+                "secondInstanceId": "b",
+                "firstFaceId": "f1",
+                "secondFaceId": "f2",
+            },
+        )
         # Third call is the mate itself
         call_args = mock_asm.add_feature.call_args
         feature_data = call_args.kwargs["feature_data"]
@@ -1471,9 +1528,7 @@ class TestAssemblyTools:
     @patch("onshape_mcp.server.assembly_manager")
     async def test_create_mate_connector_feature_data_structure(self, mock_asm):
         """Test mate connector sends correct feature data structure."""
-        mock_asm.add_feature = AsyncMock(
-            return_value={"feature": {"featureId": "mc789"}}
-        )
+        mock_asm.add_feature = AsyncMock(return_value={"feature": {"featureId": "mc789"}})
         arguments = {
             "documentId": "doc123",
             "workspaceId": "ws123",
@@ -1499,11 +1554,11 @@ class TestAssemblyTools:
     @patch("onshape_mcp.server.assembly_manager")
     async def test_create_mate_connector_with_flip_primary(self, mock_asm):
         """Test mate connector flipPrimary parameter flows to feature data."""
-        mock_asm.add_feature = AsyncMock(
-            return_value={"feature": {"featureId": "mc_flip"}}
-        )
+        mock_asm.add_feature = AsyncMock(return_value={"feature": {"featureId": "mc_flip"}})
         arguments = {
-            "documentId": "d", "workspaceId": "w", "elementId": "e",
+            "documentId": "d",
+            "workspaceId": "w",
+            "elementId": "e",
             "instanceId": "inst1",
             "faceId": "JHW",
             "flipPrimary": True,
@@ -1522,10 +1577,15 @@ class TestAssemblyTools:
         """Test mate connector with translation offsets."""
         mock_asm.add_feature = AsyncMock(return_value={"feature": {"featureId": "mc_off"}})
         arguments = {
-            "documentId": "d", "workspaceId": "w", "elementId": "e",
-            "instanceId": "inst1", "faceId": "JHW",
+            "documentId": "d",
+            "workspaceId": "w",
+            "elementId": "e",
+            "instanceId": "inst1",
+            "faceId": "JHW",
             "name": "Offset MC",
-            "offsetX": 3.0, "offsetY": -1.5, "offsetZ": 0.25,
+            "offsetX": 3.0,
+            "offsetY": -1.5,
+            "offsetZ": 0.25,
         }
         result = await call_tool("create_mate_connector", arguments)
         assert "mc_off" in result[0].text
@@ -1540,6 +1600,7 @@ class TestAssemblyTools:
     async def test_create_fastened_mate_http_error(self, mock_asm):
         """Test fastened mate with HTTP status error includes details."""
         import httpx
+
         response = Mock()
         response.status_code = 400
         response.text = "Bad request: invalid instance"
@@ -1547,11 +1608,18 @@ class TestAssemblyTools:
         mock_asm.add_feature = AsyncMock(
             side_effect=httpx.HTTPStatusError("error", request=Mock(), response=response)
         )
-        result = await call_tool("create_fastened_mate", {
-            "documentId": "d", "workspaceId": "w", "elementId": "e",
-            "firstInstanceId": "a", "secondInstanceId": "b",
-            "firstFaceId": "f1", "secondFaceId": "f2",
-        })
+        result = await call_tool(
+            "create_fastened_mate",
+            {
+                "documentId": "d",
+                "workspaceId": "w",
+                "elementId": "e",
+                "firstInstanceId": "a",
+                "secondInstanceId": "b",
+                "firstFaceId": "f1",
+                "secondFaceId": "f2",
+            },
+        )
         assert "400" in result[0].text
         assert "Bad request" in result[0].text
 
@@ -1564,12 +1632,12 @@ class TestFeatureTools:
     async def test_create_sketch_circle_success(self, mock_ps):
         """Test creating a sketch circle."""
         mock_ps.get_plane_id = AsyncMock(return_value="plane1")
-        mock_ps.add_feature = AsyncMock(
-            return_value={"feature": {"featureId": "circ123"}}
-        )
+        mock_ps.add_feature = AsyncMock(return_value={"feature": {"featureId": "circ123"}})
 
         arguments = {
-            "documentId": "d", "workspaceId": "w", "elementId": "e",
+            "documentId": "d",
+            "workspaceId": "w",
+            "elementId": "e",
             "radius": 2.0,
         }
 
@@ -1584,10 +1652,15 @@ class TestFeatureTools:
         """Test sketch circle error."""
         mock_ps.get_plane_id = AsyncMock(side_effect=Exception("fail"))
 
-        result = await call_tool("create_sketch_circle", {
-            "documentId": "d", "workspaceId": "w", "elementId": "e",
-            "radius": 1.0,
-        })
+        result = await call_tool(
+            "create_sketch_circle",
+            {
+                "documentId": "d",
+                "workspaceId": "w",
+                "elementId": "e",
+                "radius": 1.0,
+            },
+        )
 
         assert "Error" in result[0].text
 
@@ -1596,13 +1669,14 @@ class TestFeatureTools:
     async def test_create_sketch_line_success(self, mock_ps):
         """Test creating a sketch line."""
         mock_ps.get_plane_id = AsyncMock(return_value="plane1")
-        mock_ps.add_feature = AsyncMock(
-            return_value={"feature": {"featureId": "line123"}}
-        )
+        mock_ps.add_feature = AsyncMock(return_value={"feature": {"featureId": "line123"}})
 
         arguments = {
-            "documentId": "d", "workspaceId": "w", "elementId": "e",
-            "startPoint": [0, 0], "endPoint": [10, 10],
+            "documentId": "d",
+            "workspaceId": "w",
+            "elementId": "e",
+            "startPoint": [0, 0],
+            "endPoint": [10, 10],
         }
 
         result = await call_tool("create_sketch_line", arguments)
@@ -1615,13 +1689,15 @@ class TestFeatureTools:
     async def test_create_sketch_arc_success(self, mock_ps):
         """Test creating a sketch arc."""
         mock_ps.get_plane_id = AsyncMock(return_value="plane1")
-        mock_ps.add_feature = AsyncMock(
-            return_value={"feature": {"featureId": "arc123"}}
-        )
+        mock_ps.add_feature = AsyncMock(return_value={"feature": {"featureId": "arc123"}})
 
         arguments = {
-            "documentId": "d", "workspaceId": "w", "elementId": "e",
-            "radius": 1.5, "startAngle": 0, "endAngle": 90,
+            "documentId": "d",
+            "workspaceId": "w",
+            "elementId": "e",
+            "radius": 1.5,
+            "startAngle": 0,
+            "endAngle": 90,
         }
 
         result = await call_tool("create_sketch_arc", arguments)
@@ -1635,24 +1711,144 @@ class TestFeatureTools:
         """Test sketch arc error."""
         mock_ps.get_plane_id = AsyncMock(side_effect=Exception("fail"))
 
-        result = await call_tool("create_sketch_arc", {
-            "documentId": "d", "workspaceId": "w", "elementId": "e",
-            "radius": 1.0,
-        })
+        result = await call_tool(
+            "create_sketch_arc",
+            {
+                "documentId": "d",
+                "workspaceId": "w",
+                "elementId": "e",
+                "radius": 1.0,
+            },
+        )
 
         assert "Error" in result[0].text
 
     @pytest.mark.asyncio
     @patch("onshape_mcp.server.partstudio_manager")
-    async def test_create_fillet_success(self, mock_ps):
-        """Test creating a fillet."""
-        mock_ps.add_feature = AsyncMock(
-            return_value={"feature": {"featureId": "fillet123"}}
-        )
+    async def test_create_sketch_polygon_success(self, mock_ps):
+        """Test creating a closed polygon sketch."""
+        mock_ps.get_plane_id = AsyncMock(return_value="plane1")
+        mock_ps.add_feature = AsyncMock(return_value={"feature": {"featureId": "poly123"}})
 
         arguments = {
-            "documentId": "d", "workspaceId": "w", "elementId": "e",
-            "radius": 0.25, "edgeIds": ["edge1", "edge2"],
+            "documentId": "d",
+            "workspaceId": "w",
+            "elementId": "e",
+            "name": "Trapezoid",
+            "points": [[0, 0], [8, 0], [13.25, 27], [0, 27]],
+        }
+
+        result = await call_tool("create_sketch_polygon", arguments)
+
+        assert "polygon" in result[0].text.lower()
+        assert "4 vertices" in result[0].text
+        assert "poly123" in result[0].text
+        mock_ps.add_feature.assert_called_once()
+
+    @pytest.mark.asyncio
+    @patch("onshape_mcp.server.partstudio_manager")
+    async def test_create_sketch_polygon_error(self, mock_ps):
+        """Test polygon sketch error."""
+        mock_ps.get_plane_id = AsyncMock(side_effect=Exception("fail"))
+
+        result = await call_tool(
+            "create_sketch_polygon",
+            {
+                "documentId": "d",
+                "workspaceId": "w",
+                "elementId": "e",
+                "points": [[0, 0], [5, 0], [5, 5]],
+            },
+        )
+
+        assert "Error" in result[0].text
+
+    @pytest.mark.asyncio
+    @patch("onshape_mcp.server.partstudio_manager")
+    async def test_create_sketch_rectangle_with_anchors(self, mock_ps):
+        """Test rectangle with anchor constraints passes params through."""
+        mock_ps.get_plane_id = AsyncMock(return_value="plane1")
+        mock_ps.add_feature = AsyncMock(return_value={"feature": {"featureId": "rect123"}})
+
+        arguments = {
+            "documentId": "d",
+            "workspaceId": "w",
+            "elementId": "e",
+            "corner1": [0, 0],
+            "corner2": [10, 5],
+            "anchorX": "5 in",
+            "anchorY": "#offset_y",
+        }
+
+        result = await call_tool("create_sketch_rectangle", arguments)
+
+        assert isinstance(result, list)
+        assert "rect123" in result[0].text
+        mock_ps.add_feature.assert_called_once()
+
+    @pytest.mark.asyncio
+    @patch("onshape_mcp.server.partstudio_manager")
+    async def test_create_sketch_polygon_with_variable_lengths(self, mock_ps):
+        """Test polygon with variable lengths passes params through."""
+        mock_ps.get_plane_id = AsyncMock(return_value="plane1")
+        mock_ps.add_feature = AsyncMock(return_value={"feature": {"featureId": "poly456"}})
+
+        arguments = {
+            "documentId": "d",
+            "workspaceId": "w",
+            "elementId": "e",
+            "points": [[0, 0], [8, 0], [13.25, 27], [0, 27]],
+            "variableLengths": ["#bottom", None, "#top", "#side"],
+            "anchorX": "0 in",
+            "anchorY": "0 in",
+        }
+
+        result = await call_tool("create_sketch_polygon", arguments)
+
+        assert "poly456" in result[0].text
+        mock_ps.add_feature.assert_called_once()
+
+    @pytest.mark.asyncio
+    @patch("onshape_mcp.server.partstudio_manager")
+    async def test_create_sketch_polygon_with_orientation_constraints(self, mock_ps):
+        """Test polygon with horizontal/vertical edge constraints passes params through."""
+        mock_ps.get_plane_id = AsyncMock(return_value="plane1")
+        mock_ps.add_feature = AsyncMock(return_value={"feature": {"featureId": "poly789"}})
+
+        arguments = {
+            "documentId": "d",
+            "workspaceId": "w",
+            "elementId": "e",
+            "points": [[0, 0], [8, 0], [13.25, 27], [0, 27]],
+            "horizontalEdges": [0, 2],
+            "verticalEdges": [3],
+        }
+
+        result = await call_tool("create_sketch_polygon", arguments)
+
+        assert "poly789" in result[0].text
+        mock_ps.add_feature.assert_called_once()
+
+        # Verify the feature data includes HORIZONTAL and VERTICAL constraints
+        feature_data = mock_ps.add_feature.call_args[0][3]
+        constraints = feature_data["feature"]["constraints"]
+        h_constraints = [c for c in constraints if c["constraintType"] == "HORIZONTAL"]
+        v_constraints = [c for c in constraints if c["constraintType"] == "VERTICAL"]
+        assert len(h_constraints) == 2
+        assert len(v_constraints) == 1
+
+    @pytest.mark.asyncio
+    @patch("onshape_mcp.server.partstudio_manager")
+    async def test_create_fillet_success(self, mock_ps):
+        """Test creating a fillet."""
+        mock_ps.add_feature = AsyncMock(return_value={"feature": {"featureId": "fillet123"}})
+
+        arguments = {
+            "documentId": "d",
+            "workspaceId": "w",
+            "elementId": "e",
+            "radius": 0.25,
+            "edgeIds": ["edge1", "edge2"],
         }
 
         result = await call_tool("create_fillet", arguments)
@@ -1666,10 +1862,16 @@ class TestFeatureTools:
         """Test fillet error."""
         mock_ps.add_feature = AsyncMock(side_effect=Exception("fail"))
 
-        result = await call_tool("create_fillet", {
-            "documentId": "d", "workspaceId": "w", "elementId": "e",
-            "radius": 0.1, "edgeIds": ["e1"],
-        })
+        result = await call_tool(
+            "create_fillet",
+            {
+                "documentId": "d",
+                "workspaceId": "w",
+                "elementId": "e",
+                "radius": 0.1,
+                "edgeIds": ["e1"],
+            },
+        )
 
         assert "Error" in result[0].text
 
@@ -1677,13 +1879,14 @@ class TestFeatureTools:
     @patch("onshape_mcp.server.partstudio_manager")
     async def test_create_chamfer_success(self, mock_ps):
         """Test creating a chamfer."""
-        mock_ps.add_feature = AsyncMock(
-            return_value={"feature": {"featureId": "chamfer123"}}
-        )
+        mock_ps.add_feature = AsyncMock(return_value={"feature": {"featureId": "chamfer123"}})
 
         arguments = {
-            "documentId": "d", "workspaceId": "w", "elementId": "e",
-            "distance": 0.1, "edgeIds": ["edge1"],
+            "documentId": "d",
+            "workspaceId": "w",
+            "elementId": "e",
+            "distance": 0.1,
+            "edgeIds": ["edge1"],
         }
 
         result = await call_tool("create_chamfer", arguments)
@@ -1694,13 +1897,15 @@ class TestFeatureTools:
     @patch("onshape_mcp.server.partstudio_manager")
     async def test_create_revolve_success(self, mock_ps):
         """Test creating a revolve."""
-        mock_ps.add_feature = AsyncMock(
-            return_value={"feature": {"featureId": "rev123"}}
-        )
+        mock_ps.add_feature = AsyncMock(return_value={"feature": {"featureId": "rev123"}})
 
         arguments = {
-            "documentId": "d", "workspaceId": "w", "elementId": "e",
-            "sketchFeatureId": "sketch1", "axis": "Y", "angle": 360,
+            "documentId": "d",
+            "workspaceId": "w",
+            "elementId": "e",
+            "sketchFeatureId": "sketch1",
+            "axis": "Y",
+            "angle": 360,
         }
 
         result = await call_tool("create_revolve", arguments)
@@ -1714,10 +1919,15 @@ class TestFeatureTools:
         """Test revolve error."""
         mock_ps.add_feature = AsyncMock(side_effect=Exception("fail"))
 
-        result = await call_tool("create_revolve", {
-            "documentId": "d", "workspaceId": "w", "elementId": "e",
-            "sketchFeatureId": "s1",
-        })
+        result = await call_tool(
+            "create_revolve",
+            {
+                "documentId": "d",
+                "workspaceId": "w",
+                "elementId": "e",
+                "sketchFeatureId": "s1",
+            },
+        )
 
         assert "Error" in result[0].text
 
@@ -1725,13 +1935,15 @@ class TestFeatureTools:
     @patch("onshape_mcp.server.partstudio_manager")
     async def test_create_linear_pattern_success(self, mock_ps):
         """Test creating a linear pattern."""
-        mock_ps.add_feature = AsyncMock(
-            return_value={"feature": {"featureId": "lp123"}}
-        )
+        mock_ps.add_feature = AsyncMock(return_value={"feature": {"featureId": "lp123"}})
 
         arguments = {
-            "documentId": "d", "workspaceId": "w", "elementId": "e",
-            "distance": 2.0, "count": 5, "featureIds": ["f1"],
+            "documentId": "d",
+            "workspaceId": "w",
+            "elementId": "e",
+            "distance": 2.0,
+            "count": 5,
+            "featureIds": ["f1"],
             "direction": "X",
         }
 
@@ -1744,13 +1956,14 @@ class TestFeatureTools:
     @patch("onshape_mcp.server.partstudio_manager")
     async def test_create_circular_pattern_success(self, mock_ps):
         """Test creating a circular pattern."""
-        mock_ps.add_feature = AsyncMock(
-            return_value={"feature": {"featureId": "cp123"}}
-        )
+        mock_ps.add_feature = AsyncMock(return_value={"feature": {"featureId": "cp123"}})
 
         arguments = {
-            "documentId": "d", "workspaceId": "w", "elementId": "e",
-            "count": 6, "featureIds": ["f1"],
+            "documentId": "d",
+            "workspaceId": "w",
+            "elementId": "e",
+            "count": 6,
+            "featureIds": ["f1"],
         }
 
         result = await call_tool("create_circular_pattern", arguments)
@@ -1762,13 +1975,14 @@ class TestFeatureTools:
     @patch("onshape_mcp.server.partstudio_manager")
     async def test_create_boolean_success(self, mock_ps):
         """Test creating a boolean operation."""
-        mock_ps.add_feature = AsyncMock(
-            return_value={"feature": {"featureId": "bool123"}}
-        )
+        mock_ps.add_feature = AsyncMock(return_value={"feature": {"featureId": "bool123"}})
 
         arguments = {
-            "documentId": "d", "workspaceId": "w", "elementId": "e",
-            "booleanType": "UNION", "toolBodyIds": ["b1", "b2"],
+            "documentId": "d",
+            "workspaceId": "w",
+            "elementId": "e",
+            "booleanType": "UNION",
+            "toolBodyIds": ["b1", "b2"],
         }
 
         result = await call_tool("create_boolean", arguments)
@@ -1782,11 +1996,17 @@ class TestFeatureTools:
         """Test boolean error."""
         mock_ps.add_feature = AsyncMock(side_effect=Exception("fail"))
 
-        result = await call_tool("create_boolean", {
-            "documentId": "d", "workspaceId": "w", "elementId": "e",
-            "booleanType": "SUBTRACT", "toolBodyIds": ["b1"],
-            "targetBodyIds": ["t1"],
-        })
+        result = await call_tool(
+            "create_boolean",
+            {
+                "documentId": "d",
+                "workspaceId": "w",
+                "elementId": "e",
+                "booleanType": "SUBTRACT",
+                "toolBodyIds": ["b1"],
+                "targetBodyIds": ["t1"],
+            },
+        )
 
         assert "Error" in result[0].text
 
@@ -1801,7 +2021,9 @@ class TestFeatureScriptTools:
         mock_fs.evaluate = AsyncMock(return_value={"result": {"value": 42}})
 
         arguments = {
-            "documentId": "d", "workspaceId": "w", "elementId": "e",
+            "documentId": "d",
+            "workspaceId": "w",
+            "elementId": "e",
             "script": "function(context, queries) { return 42; }",
         }
 
@@ -1815,10 +2037,15 @@ class TestFeatureScriptTools:
         """Test FeatureScript evaluation error."""
         mock_fs.evaluate = AsyncMock(side_effect=Exception("parse error"))
 
-        result = await call_tool("eval_featurescript", {
-            "documentId": "d", "workspaceId": "w", "elementId": "e",
-            "script": "bad",
-        })
+        result = await call_tool(
+            "eval_featurescript",
+            {
+                "documentId": "d",
+                "workspaceId": "w",
+                "elementId": "e",
+                "script": "bad",
+            },
+        )
 
         assert "Error" in result[0].text
 
@@ -1831,7 +2058,9 @@ class TestFeatureScriptTools:
         )
 
         arguments = {
-            "documentId": "d", "workspaceId": "w", "elementId": "e",
+            "documentId": "d",
+            "workspaceId": "w",
+            "elementId": "e",
         }
 
         result = await call_tool("get_bounding_box", arguments)
@@ -1844,9 +2073,14 @@ class TestFeatureScriptTools:
         """Test bounding box error."""
         mock_fs.get_bounding_box = AsyncMock(side_effect=Exception("fail"))
 
-        result = await call_tool("get_bounding_box", {
-            "documentId": "d", "workspaceId": "w", "elementId": "e",
-        })
+        result = await call_tool(
+            "get_bounding_box",
+            {
+                "documentId": "d",
+                "workspaceId": "w",
+                "elementId": "e",
+            },
+        )
 
         assert "Error" in result[0].text
 
@@ -1863,7 +2097,9 @@ class TestExportTools:
         )
 
         arguments = {
-            "documentId": "d", "workspaceId": "w", "elementId": "e",
+            "documentId": "d",
+            "workspaceId": "w",
+            "elementId": "e",
             "format": "STL",
         }
 
@@ -1878,9 +2114,14 @@ class TestExportTools:
         """Test export part studio error."""
         mock_export.export_part_studio = AsyncMock(side_effect=Exception("fail"))
 
-        result = await call_tool("export_part_studio", {
-            "documentId": "d", "workspaceId": "w", "elementId": "e",
-        })
+        result = await call_tool(
+            "export_part_studio",
+            {
+                "documentId": "d",
+                "workspaceId": "w",
+                "elementId": "e",
+            },
+        )
 
         assert "Error" in result[0].text
 
@@ -1893,7 +2134,9 @@ class TestExportTools:
         )
 
         arguments = {
-            "documentId": "d", "workspaceId": "w", "elementId": "e",
+            "documentId": "d",
+            "workspaceId": "w",
+            "elementId": "e",
             "format": "STEP",
         }
 
@@ -1907,9 +2150,14 @@ class TestExportTools:
         """Test export assembly error."""
         mock_export.export_assembly = AsyncMock(side_effect=Exception("fail"))
 
-        result = await call_tool("export_assembly", {
-            "documentId": "d", "workspaceId": "w", "elementId": "e",
-        })
+        result = await call_tool(
+            "export_assembly",
+            {
+                "documentId": "d",
+                "workspaceId": "w",
+                "elementId": "e",
+            },
+        )
 
         assert "Error" in result[0].text
 
@@ -1943,9 +2191,14 @@ class TestGetAssemblyPositionsTool:
     @patch("onshape_mcp.server.get_assembly_positions")
     async def test_success(self, mock_fn):
         mock_fn.return_value = "Assembly Instance Positions\nFound 2 instance(s)"
-        result = await call_tool("get_assembly_positions", {
-            "documentId": "d", "workspaceId": "w", "elementId": "e",
-        })
+        result = await call_tool(
+            "get_assembly_positions",
+            {
+                "documentId": "d",
+                "workspaceId": "w",
+                "elementId": "e",
+            },
+        )
         assert isinstance(result, list)
         assert isinstance(result[0], TextContent)
         assert "Positions" in result[0].text
@@ -1954,9 +2207,14 @@ class TestGetAssemblyPositionsTool:
     @patch("onshape_mcp.server.get_assembly_positions")
     async def test_error(self, mock_fn):
         mock_fn.side_effect = Exception("API failure")
-        result = await call_tool("get_assembly_positions", {
-            "documentId": "d", "workspaceId": "w", "elementId": "e",
-        })
+        result = await call_tool(
+            "get_assembly_positions",
+            {
+                "documentId": "d",
+                "workspaceId": "w",
+                "elementId": "e",
+            },
+        )
         assert "Error" in result[0].text
 
 
@@ -1966,11 +2224,21 @@ class TestSetInstancePositionTool:
     @pytest.mark.asyncio
     @patch("onshape_mcp.server.set_absolute_position")
     async def test_success(self, mock_fn):
-        mock_fn.return_value = 'Set instance inst1 to absolute position: X=10.000", Y=-5.000", Z=0.000"'
-        result = await call_tool("set_instance_position", {
-            "documentId": "d", "workspaceId": "w", "elementId": "e",
-            "instanceId": "inst1", "x": 10.0, "y": -5.0, "z": 0.0,
-        })
+        mock_fn.return_value = (
+            'Set instance inst1 to absolute position: X=10.000", Y=-5.000", Z=0.000"'
+        )
+        result = await call_tool(
+            "set_instance_position",
+            {
+                "documentId": "d",
+                "workspaceId": "w",
+                "elementId": "e",
+                "instanceId": "inst1",
+                "x": 10.0,
+                "y": -5.0,
+                "z": 0.0,
+            },
+        )
         assert isinstance(result[0], TextContent)
         assert "10.000" in result[0].text
 
@@ -1978,10 +2246,18 @@ class TestSetInstancePositionTool:
     @patch("onshape_mcp.server.set_absolute_position")
     async def test_error(self, mock_fn):
         mock_fn.side_effect = Exception("fail")
-        result = await call_tool("set_instance_position", {
-            "documentId": "d", "workspaceId": "w", "elementId": "e",
-            "instanceId": "i", "x": 0, "y": 0, "z": 0,
-        })
+        result = await call_tool(
+            "set_instance_position",
+            {
+                "documentId": "d",
+                "workspaceId": "w",
+                "elementId": "e",
+                "instanceId": "i",
+                "x": 0,
+                "y": 0,
+                "z": 0,
+            },
+        )
         assert "Error" in result[0].text
 
 
@@ -1992,30 +2268,51 @@ class TestAlignInstanceToFaceTool:
     @patch("onshape_mcp.server.align_to_face")
     async def test_success(self, mock_fn):
         mock_fn.return_value = "Aligned 'Door' to 'front' face of 'Cabinet'."
-        result = await call_tool("align_instance_to_face", {
-            "documentId": "d", "workspaceId": "w", "elementId": "e",
-            "sourceInstanceId": "s1", "targetInstanceId": "t1", "face": "front",
-        })
+        result = await call_tool(
+            "align_instance_to_face",
+            {
+                "documentId": "d",
+                "workspaceId": "w",
+                "elementId": "e",
+                "sourceInstanceId": "s1",
+                "targetInstanceId": "t1",
+                "face": "front",
+            },
+        )
         assert "Aligned" in result[0].text
 
     @pytest.mark.asyncio
     @patch("onshape_mcp.server.align_to_face")
     async def test_invalid_face(self, mock_fn):
         mock_fn.side_effect = ValueError("Invalid face 'middle'")
-        result = await call_tool("align_instance_to_face", {
-            "documentId": "d", "workspaceId": "w", "elementId": "e",
-            "sourceInstanceId": "s1", "targetInstanceId": "t1", "face": "middle",
-        })
+        result = await call_tool(
+            "align_instance_to_face",
+            {
+                "documentId": "d",
+                "workspaceId": "w",
+                "elementId": "e",
+                "sourceInstanceId": "s1",
+                "targetInstanceId": "t1",
+                "face": "middle",
+            },
+        )
         assert "Invalid" in result[0].text
 
     @pytest.mark.asyncio
     @patch("onshape_mcp.server.align_to_face")
     async def test_error(self, mock_fn):
         mock_fn.side_effect = Exception("API fail")
-        result = await call_tool("align_instance_to_face", {
-            "documentId": "d", "workspaceId": "w", "elementId": "e",
-            "sourceInstanceId": "s1", "targetInstanceId": "t1", "face": "front",
-        })
+        result = await call_tool(
+            "align_instance_to_face",
+            {
+                "documentId": "d",
+                "workspaceId": "w",
+                "elementId": "e",
+                "sourceInstanceId": "s1",
+                "targetInstanceId": "t1",
+                "face": "front",
+            },
+        )
         assert "Error" in result[0].text
 
 
@@ -2025,37 +2322,46 @@ class TestGetBodyDetails:
     @pytest.mark.asyncio
     @patch("onshape_mcp.server.partstudio_manager")
     async def test_success(self, mock_ps):
-        mock_ps.get_body_details = AsyncMock(return_value={
-            "bodies": [{
-                "id": "JHD",
-                "type": "solid",
-                "faces": [
+        mock_ps.get_body_details = AsyncMock(
+            return_value={
+                "bodies": [
                     {
-                        "id": "JHW",
-                        "surface": {
-                            "type": "plane",
-                            "normal": {"x": 1.0, "y": 0.0, "z": 0.0},
-                            "origin": {"x": 0.01, "y": 0.0, "z": 0.0},
-                        },
-                    },
-                    {
-                        "id": "JHC",
-                        "surface": {
-                            "type": "plane",
-                            "normal": {"x": 0.0, "y": 0.0, "z": 1.0},
-                            "origin": {"x": 0.0, "y": 0.0, "z": 0.005},
-                        },
-                    },
-                    {
-                        "id": "CYL1",
-                        "surface": {"type": "cylinder", "radius": 0.005},
-                    },
+                        "id": "JHD",
+                        "type": "solid",
+                        "faces": [
+                            {
+                                "id": "JHW",
+                                "surface": {
+                                    "type": "plane",
+                                    "normal": {"x": 1.0, "y": 0.0, "z": 0.0},
+                                    "origin": {"x": 0.01, "y": 0.0, "z": 0.0},
+                                },
+                            },
+                            {
+                                "id": "JHC",
+                                "surface": {
+                                    "type": "plane",
+                                    "normal": {"x": 0.0, "y": 0.0, "z": 1.0},
+                                    "origin": {"x": 0.0, "y": 0.0, "z": 0.005},
+                                },
+                            },
+                            {
+                                "id": "CYL1",
+                                "surface": {"type": "cylinder", "radius": 0.005},
+                            },
+                        ],
+                    }
                 ],
-            }],
-        })
-        result = await call_tool("get_body_details", {
-            "documentId": "d", "workspaceId": "w", "elementId": "e",
-        })
+            }
+        )
+        result = await call_tool(
+            "get_body_details",
+            {
+                "documentId": "d",
+                "workspaceId": "w",
+                "elementId": "e",
+            },
+        )
         assert "JHD" in result[0].text
         assert "JHW" in result[0].text
         assert "plane" in result[0].text
@@ -2067,29 +2373,38 @@ class TestGetBodyDetails:
     @patch("onshape_mcp.server.partstudio_manager")
     async def test_uppercase_surface_types(self, mock_ps):
         """Test that uppercase surface types from the API are handled correctly."""
-        mock_ps.get_body_details = AsyncMock(return_value={
-            "bodies": [{
-                "id": "JHD",
-                "type": "SOLID",
-                "faces": [
+        mock_ps.get_body_details = AsyncMock(
+            return_value={
+                "bodies": [
                     {
-                        "id": "JHW",
-                        "surface": {
-                            "type": "PLANE",
-                            "normal": {"x": 1.0, "y": 0.0, "z": 0.0},
-                            "origin": {"x": 0.01, "y": 0.0, "z": 0.0},
-                        },
-                    },
-                    {
-                        "id": "CYL1",
-                        "surface": {"type": "CYLINDER", "radius": 0.005},
-                    },
+                        "id": "JHD",
+                        "type": "SOLID",
+                        "faces": [
+                            {
+                                "id": "JHW",
+                                "surface": {
+                                    "type": "PLANE",
+                                    "normal": {"x": 1.0, "y": 0.0, "z": 0.0},
+                                    "origin": {"x": 0.01, "y": 0.0, "z": 0.0},
+                                },
+                            },
+                            {
+                                "id": "CYL1",
+                                "surface": {"type": "CYLINDER", "radius": 0.005},
+                            },
+                        ],
+                    }
                 ],
-            }],
-        })
-        result = await call_tool("get_body_details", {
-            "documentId": "d", "workspaceId": "w", "elementId": "e",
-        })
+            }
+        )
+        result = await call_tool(
+            "get_body_details",
+            {
+                "documentId": "d",
+                "workspaceId": "w",
+                "elementId": "e",
+            },
+        )
         assert "normal=" in result[0].text
         assert "radius=" in result[0].text
 
@@ -2097,18 +2412,28 @@ class TestGetBodyDetails:
     @patch("onshape_mcp.server.partstudio_manager")
     async def test_no_bodies(self, mock_ps):
         mock_ps.get_body_details = AsyncMock(return_value={"bodies": []})
-        result = await call_tool("get_body_details", {
-            "documentId": "d", "workspaceId": "w", "elementId": "e",
-        })
+        result = await call_tool(
+            "get_body_details",
+            {
+                "documentId": "d",
+                "workspaceId": "w",
+                "elementId": "e",
+            },
+        )
         assert "No bodies" in result[0].text
 
     @pytest.mark.asyncio
     @patch("onshape_mcp.server.partstudio_manager")
     async def test_error(self, mock_ps):
         mock_ps.get_body_details = AsyncMock(side_effect=Exception("fail"))
-        result = await call_tool("get_body_details", {
-            "documentId": "d", "workspaceId": "w", "elementId": "e",
-        })
+        result = await call_tool(
+            "get_body_details",
+            {
+                "documentId": "d",
+                "workspaceId": "w",
+                "elementId": "e",
+            },
+        )
         assert "Error" in result[0].text
 
     @pytest.mark.asyncio
@@ -2119,9 +2444,14 @@ class TestGetBodyDetails:
         mock_ps.get_body_details = AsyncMock(
             side_effect=httpx.HTTPStatusError("Not found", request=Mock(), response=resp)
         )
-        result = await call_tool("get_body_details", {
-            "documentId": "d", "workspaceId": "w", "elementId": "e",
-        })
+        result = await call_tool(
+            "get_body_details",
+            {
+                "documentId": "d",
+                "workspaceId": "w",
+                "elementId": "e",
+            },
+        )
         assert "404" in result[0].text
 
 
@@ -2131,33 +2461,40 @@ class TestGetAssemblyFeatures:
     @pytest.mark.asyncio
     @patch("onshape_mcp.server.assembly_manager")
     async def test_success(self, mock_asm):
-        mock_asm.get_features = AsyncMock(return_value={
-            "features": [
-                {
-                    "btType": "BTMMateConnector-66",
-                    "typeName": "mateConnector",
-                    "featureId": "mc1",
-                    "name": "MC 1",
-                    "parameters": [],
+        mock_asm.get_features = AsyncMock(
+            return_value={
+                "features": [
+                    {
+                        "btType": "BTMMateConnector-66",
+                        "typeName": "mateConnector",
+                        "featureId": "mc1",
+                        "name": "MC 1",
+                        "parameters": [],
+                    },
+                    {
+                        "btType": "BTMMate-64",
+                        "typeName": "mate",
+                        "featureId": "mate1",
+                        "name": "Fastened Mate",
+                        "parameters": [
+                            {"parameterId": "mateType", "value": "FASTENED"},
+                        ],
+                    },
+                ],
+                "featureStates": {
+                    "mc1": {"featureStatus": "OK"},
+                    "mate1": {"featureStatus": "OK"},
                 },
-                {
-                    "btType": "BTMMate-64",
-                    "typeName": "mate",
-                    "featureId": "mate1",
-                    "name": "Fastened Mate",
-                    "parameters": [
-                        {"parameterId": "mateType", "value": "FASTENED"},
-                    ],
-                },
-            ],
-            "featureStates": {
-                "mc1": {"featureStatus": "OK"},
-                "mate1": {"featureStatus": "OK"},
+            }
+        )
+        result = await call_tool(
+            "get_assembly_features",
+            {
+                "documentId": "d",
+                "workspaceId": "w",
+                "elementId": "e",
             },
-        })
-        result = await call_tool("get_assembly_features", {
-            "documentId": "d", "workspaceId": "w", "elementId": "e",
-        })
+        )
         text = result[0].text
         assert "MC 1" in text
         assert "Fastened Mate" in text
@@ -2170,18 +2507,28 @@ class TestGetAssemblyFeatures:
     @patch("onshape_mcp.server.assembly_manager")
     async def test_no_features(self, mock_asm):
         mock_asm.get_features = AsyncMock(return_value={"features": [], "featureStates": {}})
-        result = await call_tool("get_assembly_features", {
-            "documentId": "d", "workspaceId": "w", "elementId": "e",
-        })
+        result = await call_tool(
+            "get_assembly_features",
+            {
+                "documentId": "d",
+                "workspaceId": "w",
+                "elementId": "e",
+            },
+        )
         assert "No features" in result[0].text
 
     @pytest.mark.asyncio
     @patch("onshape_mcp.server.assembly_manager")
     async def test_error(self, mock_asm):
         mock_asm.get_features = AsyncMock(side_effect=Exception("fail"))
-        result = await call_tool("get_assembly_features", {
-            "documentId": "d", "workspaceId": "w", "elementId": "e",
-        })
+        result = await call_tool(
+            "get_assembly_features",
+            {
+                "documentId": "d",
+                "workspaceId": "w",
+                "elementId": "e",
+            },
+        )
         assert "Error" in result[0].text
 
     @pytest.mark.asyncio
@@ -2192,9 +2539,14 @@ class TestGetAssemblyFeatures:
         mock_asm.get_features = AsyncMock(
             side_effect=httpx.HTTPStatusError("Forbidden", request=Mock(), response=resp)
         )
-        result = await call_tool("get_assembly_features", {
-            "documentId": "d", "workspaceId": "w", "elementId": "e",
-        })
+        result = await call_tool(
+            "get_assembly_features",
+            {
+                "documentId": "d",
+                "workspaceId": "w",
+                "elementId": "e",
+            },
+        )
         assert "403" in result[0].text
 
 
@@ -2204,16 +2556,23 @@ class TestGetAssemblyElementId:
     @pytest.mark.asyncio
     @patch("onshape_mcp.server.assembly_manager")
     async def test_element_id_shown(self, mock_asm):
-        mock_asm.get_assembly_definition = AsyncMock(return_value={
-            "rootAssembly": {
-                "instances": [
-                    {"id": "inst1", "name": "Part 1", "elementId": "elem_abc"},
-                ],
+        mock_asm.get_assembly_definition = AsyncMock(
+            return_value={
+                "rootAssembly": {
+                    "instances": [
+                        {"id": "inst1", "name": "Part 1", "elementId": "elem_abc"},
+                    ],
+                }
             }
-        })
-        result = await call_tool("get_assembly", {
-            "documentId": "d", "workspaceId": "w", "elementId": "e",
-        })
+        )
+        result = await call_tool(
+            "get_assembly",
+            {
+                "documentId": "d",
+                "workspaceId": "w",
+                "elementId": "e",
+            },
+        )
         assert "elem_abc" in result[0].text
         assert "Element ID" in result[0].text
 
@@ -2237,10 +2596,16 @@ class TestGetFaceCoordinateSystem:
                 z_axis=(0.0, 0.0, 1.0),
             ),
         ) as mock_query:
-            result = await call_tool("get_face_coordinate_system", {
-                "documentId": "d", "workspaceId": "w", "elementId": "e",
-                "instanceId": "inst1", "faceId": "JHG",
-            })
+            result = await call_tool(
+                "get_face_coordinate_system",
+                {
+                    "documentId": "d",
+                    "workspaceId": "w",
+                    "elementId": "e",
+                    "instanceId": "inst1",
+                    "faceId": "JHG",
+                },
+            )
             text = result[0].text
             assert "JHG" in text
             assert "inst1" in text
@@ -2256,10 +2621,16 @@ class TestGetFaceCoordinateSystem:
             new_callable=AsyncMock,
             side_effect=RuntimeError("Could not find resolved coordinate system"),
         ):
-            result = await call_tool("get_face_coordinate_system", {
-                "documentId": "d", "workspaceId": "w", "elementId": "e",
-                "instanceId": "inst1", "faceId": "JHG",
-            })
+            result = await call_tool(
+                "get_face_coordinate_system",
+                {
+                    "documentId": "d",
+                    "workspaceId": "w",
+                    "elementId": "e",
+                    "instanceId": "inst1",
+                    "faceId": "JHG",
+                },
+            )
             assert "Error" in result[0].text
             assert "Could not find resolved coordinate system" in result[0].text
 
@@ -2273,10 +2644,16 @@ class TestGetFaceCoordinateSystem:
             new_callable=AsyncMock,
             side_effect=httpx.HTTPStatusError("Server error", request=Mock(), response=resp),
         ):
-            result = await call_tool("get_face_coordinate_system", {
-                "documentId": "d", "workspaceId": "w", "elementId": "e",
-                "instanceId": "inst1", "faceId": "JHG",
-            })
+            result = await call_tool(
+                "get_face_coordinate_system",
+                {
+                    "documentId": "d",
+                    "workspaceId": "w",
+                    "elementId": "e",
+                    "instanceId": "inst1",
+                    "faceId": "JHG",
+                },
+            )
             assert "500" in result[0].text
 
     @pytest.mark.asyncio
@@ -2287,12 +2664,135 @@ class TestGetFaceCoordinateSystem:
             new_callable=AsyncMock,
             side_effect=Exception("unexpected failure"),
         ):
-            result = await call_tool("get_face_coordinate_system", {
-                "documentId": "d", "workspaceId": "w", "elementId": "e",
-                "instanceId": "inst1", "faceId": "JHG",
-            })
+            result = await call_tool(
+                "get_face_coordinate_system",
+                {
+                    "documentId": "d",
+                    "workspaceId": "w",
+                    "elementId": "e",
+                    "instanceId": "inst1",
+                    "faceId": "JHG",
+                },
+            )
             assert "Error" in result[0].text
             assert "unexpected failure" in result[0].text
+
+
+class TestBatchBuilderTools:
+    """Test batch builder MCP tools."""
+
+    @pytest.mark.asyncio
+    @patch("onshape_mcp.server.featurestudio_manager")
+    async def test_deploy_batch_builders(self, mock_fs_manager):
+        mock_fs_manager.deploy_builders = AsyncMock(return_value={"elementId": "fs_elem_123"})
+        result = await call_tool(
+            "deploy_batch_builders",
+            {"documentId": "doc1", "workspaceId": "ws1"},
+        )
+        assert "Deployed MCP batch builders" in result[0].text
+        assert "fs_elem_123" in result[0].text
+
+    @pytest.mark.asyncio
+    @patch("onshape_mcp.server.partstudio_manager")
+    async def test_batch_rect_extrude(self, mock_partstudio):
+        mock_partstudio.add_feature = AsyncMock(
+            return_value={"featureState": {"featureStatus": "OK"}}
+        )
+        result = await call_tool(
+            "batch_rect_extrude",
+            {
+                "documentId": "doc1",
+                "workspaceId": "ws1",
+                "elementId": "elem1",
+                "namespace": "eABC::mDEF",
+                "name": "Test Panel",
+                "corner1": [0, 0],
+                "corner2": [10, 5],
+                "depth": 0.75,
+            },
+        )
+        assert "rectExtrude" in result[0].text
+        assert "Test Panel" in result[0].text
+
+    @pytest.mark.asyncio
+    @patch("onshape_mcp.server.partstudio_manager")
+    async def test_batch_rect_extrude_with_draft(self, mock_partstudio):
+        mock_partstudio.add_feature = AsyncMock(
+            return_value={"featureState": {"featureStatus": "OK"}}
+        )
+        result = await call_tool(
+            "batch_rect_extrude",
+            {
+                "documentId": "doc1",
+                "workspaceId": "ws1",
+                "elementId": "elem1",
+                "namespace": "eABC::mDEF",
+                "name": "Tapered Leg",
+                "plane": "Top",
+                "corner1": [-0.75, -0.75],
+                "corner2": [0.75, 0.75],
+                "depth": 6.5,
+                "draftAngle": 3.0,
+                "draftPullDirection": True,
+            },
+        )
+        assert "rectExtrude" in result[0].text
+
+    @pytest.mark.asyncio
+    @patch("onshape_mcp.server.partstudio_manager")
+    async def test_batch_cabinet_box(self, mock_partstudio):
+        mock_partstudio.add_feature = AsyncMock(
+            return_value={"featureState": {"featureStatus": "OK"}}
+        )
+        result = await call_tool(
+            "batch_cabinet_box",
+            {
+                "documentId": "doc1",
+                "workspaceId": "ws1",
+                "elementId": "elem1",
+                "namespace": "eABC::mDEF",
+                "name": "Center Cabinet",
+                "width": 27.0,
+                "height": 27.0,
+                "depth": 21.5,
+                "panelThickness": 0.75,
+                "hasDivider": True,
+                "hasShelf": True,
+                "shelfHeight": 13.5,
+            },
+        )
+        assert "cabinetBox" in result[0].text
+        assert "Center Cabinet" in result[0].text
+
+    @pytest.mark.asyncio
+    @patch("onshape_mcp.server.partstudio_manager")
+    async def test_batch_poly_extrude(self, mock_partstudio):
+        mock_partstudio.add_feature = AsyncMock(
+            return_value={"featureState": {"featureStatus": "OK"}}
+        )
+        result = await call_tool(
+            "batch_poly_extrude",
+            {
+                "documentId": "doc1",
+                "workspaceId": "ws1",
+                "elementId": "elem1",
+                "namespace": "eABC::mDEF",
+                "name": "Speaker Bay",
+                "vertices": [[0, 0], [7.5, 0], [13.25, 27], [0, 27]],
+                "depth": 21.5,
+            },
+        )
+        assert "polyExtrude" in result[0].text
+        assert "Speaker Bay" in result[0].text
+
+    @pytest.mark.asyncio
+    async def test_batch_tools_listed(self):
+        tools = await list_tools()
+        tool_names = [t.name for t in tools]
+        assert "deploy_batch_builders" in tool_names
+        assert "batch_rect_extrude" in tool_names
+        assert "batch_cabinet_box" in tool_names
+        assert "batch_poly_extrude" in tool_names
 
 
 class TestUnknownTool:

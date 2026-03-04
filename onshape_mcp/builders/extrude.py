@@ -36,6 +36,8 @@ class ExtrudeBuilder:
         self.depth = depth
         self.operation_type = operation_type
         self.depth_variable: Optional[str] = None
+        self.draft_angle: Optional[float] = None
+        self.draft_pull_direction: bool = False
 
     def set_depth(self, depth: float, variable_name: Optional[str] = None) -> "ExtrudeBuilder":
         """Set extrude depth.
@@ -63,6 +65,21 @@ class ExtrudeBuilder:
         self.sketch_feature_id = sketch_feature_id
         return self
 
+    def set_draft(self, angle: float, pull_direction: bool = False) -> "ExtrudeBuilder":
+        """Set draft angle for tapered extrude.
+
+        Args:
+            angle: Draft angle in degrees
+            pull_direction: If False (default), taper inward (top gets smaller).
+                If True, taper outward (top gets bigger).
+
+        Returns:
+            Self for chaining
+        """
+        self.draft_angle = angle
+        self.draft_pull_direction = pull_direction
+        return self
+
     def build(self) -> Dict[str, Any]:
         """Build the extrude feature JSON.
 
@@ -74,7 +91,7 @@ class ExtrudeBuilder:
 
         depth_expression = f"#{self.depth_variable}" if self.depth_variable else f"{self.depth} in"
 
-        return {
+        feature_data = {
             "btType": "BTFeatureDefinitionCall-1406",
             "feature": {
                 "btType": "BTMFeature-134",
@@ -128,3 +145,38 @@ class ExtrudeBuilder:
                 ],
             },
         }
+
+        if self.draft_angle is not None:
+            params = feature_data["feature"]["parameters"]
+            params.append(
+                {
+                    "btType": "BTMParameterBoolean-144",
+                    "value": True,
+                    "parameterId": "hasDraft",
+                    "parameterName": "",
+                    "libraryRelationType": "NONE",
+                }
+            )
+            params.append(
+                {
+                    "btType": "BTMParameterQuantity-147",
+                    "isInteger": False,
+                    "value": self.draft_angle,
+                    "units": "",
+                    "expression": f"{self.draft_angle} deg",
+                    "parameterId": "draftAngle",
+                    "parameterName": "",
+                    "libraryRelationType": "NONE",
+                }
+            )
+            params.append(
+                {
+                    "btType": "BTMParameterBoolean-144",
+                    "value": self.draft_pull_direction,
+                    "parameterId": "draftPullDirection",
+                    "parameterName": "",
+                    "libraryRelationType": "NONE",
+                }
+            )
+
+        return feature_data

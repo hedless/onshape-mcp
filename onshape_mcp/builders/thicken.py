@@ -143,4 +143,7 @@ class ThickenBuilder:
             ],
         }
 
-        return feature
+        return {
+            "btType": "BTFeatureDefinitionCall-1406",
+            "feature": feature,
+        }
