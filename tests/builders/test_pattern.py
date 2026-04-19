@@ -88,16 +88,22 @@ class TestLinearPatternBuilder:
         params = result["feature"]["parameters"]
 
         entities = next(p for p in params if p["parameterId"] == "entities")
-        assert entities["queries"][0]["deterministicIds"] == ["f1", "f2"]
+        queries = entities["queries"]
+        assert len(queries) == 2
+        assert 'makeId("f1")' in queries[0]["queryString"]
+        assert "EntityType.BODY" in queries[0]["queryString"]
+        assert 'makeId("f2")' in queries[1]["queryString"]
 
     def test_build_direction_mapping(self):
-        for axis, expected in [("X", "RIGHT"), ("Y", "TOP"), ("Z", "FRONT")]:
+        for axis, expected in [("X", "Right"), ("Y", "Top"), ("Z", "Front")]:
             lp = LinearPatternBuilder()
             lp.add_feature("f1").set_direction(axis)
             result = lp.build()
             params = result["feature"]["parameters"]
-            dir_param = next(p for p in params if p["parameterId"] == "directionQuery")
-            assert expected in dir_param["queries"][0]["queryString"]
+            dir_param = next(p for p in params if p["parameterId"] == "directionOne")
+            qs = dir_param["queries"][0]["queryString"]
+            assert f'makeId("{expected}")' in qs
+            assert "qNthElement" in qs
 
     def test_build_distance_without_variable(self):
         lp = LinearPatternBuilder(distance=2.5)
@@ -130,14 +136,14 @@ class TestLinearPatternBuilder:
         assert count_param["isInteger"] is True
         assert count_param["expression"] == "5"
 
-    def test_build_pattern_type_is_feature(self):
+    def test_build_pattern_type_is_part(self):
         lp = LinearPatternBuilder()
         lp.add_feature("f1")
         result = lp.build()
         params = result["feature"]["parameters"]
 
         pt = next(p for p in params if p["parameterId"] == "patternType")
-        assert pt["value"] == "FEATURE"
+        assert pt["value"] == "PART"
 
 
 class TestCircularPatternBuilder:
@@ -204,13 +210,15 @@ class TestCircularPatternBuilder:
         assert feature["name"] == "TestCP"
 
     def test_build_axis_mapping(self):
-        for axis, expected in [("X", "RIGHT"), ("Y", "TOP"), ("Z", "FRONT")]:
+        for axis, expected in [("X", "Right"), ("Y", "Top"), ("Z", "Front")]:
             cp = CircularPatternBuilder()
             cp.add_feature("f1").set_axis(axis)
             result = cp.build()
             params = result["feature"]["parameters"]
-            axis_param = next(p for p in params if p["parameterId"] == "axisQuery")
-            assert expected in axis_param["queries"][0]["queryString"]
+            axis_param = next(p for p in params if p["parameterId"] == "axis")
+            qs = axis_param["queries"][0]["queryString"]
+            assert f'makeId("{expected}")' in qs
+            assert "qNthElement" in qs
 
     def test_build_angle_without_variable(self):
         cp = CircularPatternBuilder()

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `LinearPatternBuilder` / `CircularPatternBuilder`: switched from `FEATURE` to `PART` pattern type so downstream fillet/chamfer features no longer break the solver. Entities query now emits `qCreatedBy(makeId(...), EntityType.BODY)` per source feature; direction/axis parameter IDs corrected to `directionOne`/`axis` with `qNthElement(..., 0)` selector. Synced from shapecraft fixes.
+
 ### Added
 
 - Assembly management tools: `create_assembly`, `add_assembly_instance`, `transform_instance`, `create_fastened_mate`, `create_revolute_mate`

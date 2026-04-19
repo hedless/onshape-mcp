@@ -12,8 +12,39 @@ class PatternType(Enum):
     FACE = "FACE"
 
 
+_AXIS_TO_WORLD_EDGE = {"X": "Right", "Y": "Top", "Z": "Front"}
+
+
+def _axis_query_string(axis: str) -> str:
+    world_edge = _AXIS_TO_WORLD_EDGE[axis]
+    return f'query = qNthElement(qCreatedBy(makeId("{world_edge}"), EntityType.EDGE), 0);'
+
+
+def _entities_query(feature_ids: List[str]) -> Dict[str, Any]:
+    """Build an entities query selecting bodies created by the given features.
+
+    PART-type patterns require BODY queries per source feature so downstream
+    fillet/chamfer features don't break the solver.
+    """
+    return {
+        "btType": "BTMParameterQueryList-148",
+        "parameterId": "entities",
+        "parameterName": "",
+        "libraryRelationType": "NONE",
+        "queries": [
+            {
+                "btType": "BTMIndividualQuery-138",
+                "deterministicIds": [],
+                "queryStatement": None,
+                "queryString": f'query = qCreatedBy(makeId("{fid}"), EntityType.BODY);',
+            }
+            for fid in feature_ids
+        ],
+    }
+
+
 class LinearPatternBuilder:
-    """Builder for creating Onshape linear pattern features."""
+    """Builder for creating Onshape linear pattern features (PART-type)."""
 
     def __init__(
         self,
@@ -21,13 +52,6 @@ class LinearPatternBuilder:
         distance: float = 1.0,
         count: int = 2,
     ):
-        """Initialize linear pattern builder.
-
-        Args:
-            name: Name of the pattern feature
-            distance: Spacing between instances in inches
-            count: Total number of instances including the original
-        """
         self.name = name
         self.distance = distance
         self.count = count
@@ -38,92 +62,41 @@ class LinearPatternBuilder:
     def set_distance(
         self, distance: float, variable_name: Optional[str] = None
     ) -> "LinearPatternBuilder":
-        """Set the distance between pattern instances.
-
-        Args:
-            distance: Distance in inches
-            variable_name: Optional variable name to reference
-
-        Returns:
-            Self for chaining
-        """
         self.distance = distance
         self.distance_variable = variable_name
         return self
 
     def set_count(self, count: int) -> "LinearPatternBuilder":
-        """Set the number of pattern instances.
-
-        Args:
-            count: Total number of instances including the original
-
-        Returns:
-            Self for chaining
-        """
         self.count = count
         return self
 
     def add_feature(self, feature_id: str) -> "LinearPatternBuilder":
-        """Add a feature to pattern by its deterministic ID.
-
-        Args:
-            feature_id: Deterministic ID of the feature to pattern
-
-        Returns:
-            Self for chaining
-        """
         self.feature_queries.append(feature_id)
         return self
 
     def set_direction(self, axis: str) -> "LinearPatternBuilder":
-        """Set the pattern direction axis.
-
-        Args:
-            axis: Direction axis ("X", "Y", or "Z")
-
-        Returns:
-            Self for chaining
-        """
+        if axis not in _AXIS_TO_WORLD_EDGE:
+            raise ValueError(f"axis must be one of {sorted(_AXIS_TO_WORLD_EDGE)}")
         self.direction_axis = axis
         return self
 
     def _build_direction_query(self) -> Dict[str, Any]:
-        """Build the direction axis query parameter.
-
-        Returns:
-            Direction query parameter dictionary
-        """
-        axis_map = {
-            "X": "RIGHT",
-            "Y": "TOP",
-            "Z": "FRONT",
-        }
-        axis_value = axis_map.get(self.direction_axis, "RIGHT")
-
         return {
             "btType": "BTMParameterQueryList-148",
+            "parameterId": "directionOne",
+            "parameterName": "",
+            "libraryRelationType": "NONE",
             "queries": [
                 {
                     "btType": "BTMIndividualQuery-138",
                     "deterministicIds": [],
                     "queryStatement": None,
-                    "queryString": f'query = qCreatedBy(makeId("{axis_value}"), EntityType.EDGE);',
+                    "queryString": _axis_query_string(self.direction_axis),
                 }
             ],
-            "parameterId": "directionQuery",
-            "parameterName": "",
-            "libraryRelationType": "NONE",
         }
 
     def build(self) -> Dict[str, Any]:
-        """Build the linear pattern feature JSON.
-
-        Returns:
-            Feature definition for Onshape API
-
-        Raises:
-            ValueError: If no features have been added
-        """
         if not self.feature_queries:
             raise ValueError("At least one feature must be added")
 
@@ -141,27 +114,16 @@ class LinearPatternBuilder:
                 "namespace": "",
                 "parameters": [
                     {
-                        "btType": "BTMParameterQueryList-148",
-                        "queries": [
-                            {
-                                "btType": "BTMIndividualQuery-138",
-                                "deterministicIds": self.feature_queries,
-                            }
-                        ],
-                        "parameterId": "entities",
-                        "parameterName": "",
-                        "libraryRelationType": "NONE",
-                    },
-                    self._build_direction_query(),
-                    {
                         "btType": "BTMParameterEnum-145",
                         "namespace": "",
                         "enumName": "PatternType",
-                        "value": PatternType.FEATURE.value,
+                        "value": PatternType.PART.value,
                         "parameterId": "patternType",
                         "parameterName": "",
                         "libraryRelationType": "NONE",
                     },
+                    _entities_query(self.feature_queries),
+                    self._build_direction_query(),
                     {
                         "btType": "BTMParameterQuantity-147",
                         "isInteger": False,
@@ -188,19 +150,13 @@ class LinearPatternBuilder:
 
 
 class CircularPatternBuilder:
-    """Builder for creating Onshape circular pattern features."""
+    """Builder for creating Onshape circular pattern features (PART-type)."""
 
     def __init__(
         self,
         name: str = "Circular pattern",
         count: int = 4,
     ):
-        """Initialize circular pattern builder.
-
-        Args:
-            name: Name of the pattern feature
-            count: Total number of instances including the original
-        """
         self.name = name
         self.count = count
         self.angle = 360.0
@@ -209,98 +165,47 @@ class CircularPatternBuilder:
         self.axis = "Z"
 
     def set_count(self, count: int) -> "CircularPatternBuilder":
-        """Set the number of pattern instances.
-
-        Args:
-            count: Total number of instances including the original
-
-        Returns:
-            Self for chaining
-        """
         self.count = count
         return self
 
-    def set_angle(self, angle: float, variable_name: Optional[str] = None) -> "CircularPatternBuilder":
-        """Set the total angle spread for the pattern.
-
-        Args:
-            angle: Total angle in degrees
-            variable_name: Optional variable name to reference
-
-        Returns:
-            Self for chaining
-        """
+    def set_angle(
+        self, angle: float, variable_name: Optional[str] = None
+    ) -> "CircularPatternBuilder":
         self.angle = angle
         self.angle_variable = variable_name
         return self
 
     def add_feature(self, feature_id: str) -> "CircularPatternBuilder":
-        """Add a feature to pattern by its deterministic ID.
-
-        Args:
-            feature_id: Deterministic ID of the feature to pattern
-
-        Returns:
-            Self for chaining
-        """
         self.feature_queries.append(feature_id)
         return self
 
     def set_axis(self, axis: str) -> "CircularPatternBuilder":
-        """Set the pattern rotation axis.
-
-        Args:
-            axis: Rotation axis ("X", "Y", or "Z")
-
-        Returns:
-            Self for chaining
-        """
+        if axis not in _AXIS_TO_WORLD_EDGE:
+            raise ValueError(f"axis must be one of {sorted(_AXIS_TO_WORLD_EDGE)}")
         self.axis = axis
         return self
 
     def _build_axis_query(self) -> Dict[str, Any]:
-        """Build the rotation axis query parameter.
-
-        Returns:
-            Axis query parameter dictionary
-        """
-        axis_map = {
-            "X": "RIGHT",
-            "Y": "TOP",
-            "Z": "FRONT",
-        }
-        axis_value = axis_map.get(self.axis, "FRONT")
-
         return {
             "btType": "BTMParameterQueryList-148",
+            "parameterId": "axis",
+            "parameterName": "",
+            "libraryRelationType": "NONE",
             "queries": [
                 {
                     "btType": "BTMIndividualQuery-138",
                     "deterministicIds": [],
                     "queryStatement": None,
-                    "queryString": f'query = qCreatedBy(makeId("{axis_value}"), EntityType.EDGE);',
+                    "queryString": _axis_query_string(self.axis),
                 }
             ],
-            "parameterId": "axisQuery",
-            "parameterName": "",
-            "libraryRelationType": "NONE",
         }
 
     def build(self) -> Dict[str, Any]:
-        """Build the circular pattern feature JSON.
-
-        Returns:
-            Feature definition for Onshape API
-
-        Raises:
-            ValueError: If no features have been added
-        """
         if not self.feature_queries:
             raise ValueError("At least one feature must be added")
 
-        angle_expression = (
-            f"#{self.angle_variable}" if self.angle_variable else f"{self.angle} deg"
-        )
+        angle_expression = f"#{self.angle_variable}" if self.angle_variable else f"{self.angle} deg"
 
         return {
             "btType": "BTFeatureDefinitionCall-1406",
@@ -312,27 +217,16 @@ class CircularPatternBuilder:
                 "namespace": "",
                 "parameters": [
                     {
-                        "btType": "BTMParameterQueryList-148",
-                        "queries": [
-                            {
-                                "btType": "BTMIndividualQuery-138",
-                                "deterministicIds": self.feature_queries,
-                            }
-                        ],
-                        "parameterId": "entities",
-                        "parameterName": "",
-                        "libraryRelationType": "NONE",
-                    },
-                    self._build_axis_query(),
-                    {
                         "btType": "BTMParameterEnum-145",
                         "namespace": "",
                         "enumName": "PatternType",
-                        "value": PatternType.FEATURE.value,
+                        "value": PatternType.PART.value,
                         "parameterId": "patternType",
                         "parameterName": "",
                         "libraryRelationType": "NONE",
                     },
+                    _entities_query(self.feature_queries),
+                    self._build_axis_query(),
                     {
                         "btType": "BTMParameterQuantity-147",
                         "isInteger": False,
