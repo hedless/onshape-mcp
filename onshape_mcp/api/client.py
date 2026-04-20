@@ -118,6 +118,24 @@ class OnshapeClient:
         logger.debug(f"GET {url} response: {self._sanitize_for_logging(result, max_length=500)}")
         return result
 
+    async def get_bytes(self, path: str, params: Optional[Dict[str, Any]] = None) -> bytes:
+        """Make a GET request that returns the raw response body as bytes.
+
+        Used for downloading binary assets (e.g. translation results) where the
+        JSON parser in get() would corrupt the payload.
+        """
+        url = f"{self.base_url}{path}"
+        headers = {"Authorization": self._get_auth_header()}
+
+        self._ensure_client()
+        logger.debug(f"GET(bytes) {url} with params: {self._sanitize_for_logging(params)}")
+        response = await self._client.get(
+            url, params=params, headers=headers, follow_redirects=True
+        )
+        response.raise_for_status()
+        logger.debug(f"GET(bytes) {url} -> {len(response.content)} bytes")
+        return response.content
+
     async def post(
         self,
         path: str,

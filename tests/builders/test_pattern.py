@@ -88,7 +88,10 @@ class TestLinearPatternBuilder:
         params = result["feature"]["parameters"]
 
         entities = next(p for p in params if p["parameterId"] == "entities")
-        assert entities["queries"][0]["deterministicIds"] == ["f1", "f2"]
+        queries = entities["queries"]
+        assert len(queries) == 2
+        assert 'qCreatedBy(makeId("f1"))' in queries[0]["queryString"]
+        assert 'qCreatedBy(makeId("f2"))' in queries[1]["queryString"]
 
     def test_build_direction_mapping(self):
         for axis, expected in [("X", "RIGHT"), ("Y", "TOP"), ("Z", "FRONT")]:
@@ -204,13 +207,34 @@ class TestCircularPatternBuilder:
         assert feature["name"] == "TestCP"
 
     def test_build_axis_mapping(self):
-        for axis, expected in [("X", "RIGHT"), ("Y", "TOP"), ("Z", "FRONT")]:
+        for axis, expected in [("X", "Right"), ("Y", "Front"), ("Z", "Top")]:
             cp = CircularPatternBuilder()
             cp.add_feature("f1").set_axis(axis)
             result = cp.build()
             params = result["feature"]["parameters"]
             axis_param = next(p for p in params if p["parameterId"] == "axisQuery")
-            assert expected in axis_param["queries"][0]["queryString"]
+            qs = axis_param["queries"][0]["queryString"]
+            assert expected in qs
+            assert "EntityType.FACE" in qs
+
+    def test_set_axis_query_overrides_default(self):
+        cp = CircularPatternBuilder()
+        cp.add_feature("f1").set_axis_query("query = qEverything(EntityType.FACE);")
+        result = cp.build()
+        params = result["feature"]["parameters"]
+        axis_param = next(p for p in params if p["parameterId"] == "axisQuery")
+        assert axis_param["queries"][0]["queryString"] == "query = qEverything(EntityType.FACE);"
+
+    def test_build_entities_uses_created_by(self):
+        cp = CircularPatternBuilder()
+        cp.add_feature("f1").add_feature("f2")
+        result = cp.build()
+        params = result["feature"]["parameters"]
+        entities = next(p for p in params if p["parameterId"] == "entities")
+        queries = entities["queries"]
+        assert len(queries) == 2
+        assert 'qCreatedBy(makeId("f1"))' in queries[0]["queryString"]
+        assert 'qCreatedBy(makeId("f2"))' in queries[1]["queryString"]
 
     def test_build_angle_without_variable(self):
         cp = CircularPatternBuilder()
