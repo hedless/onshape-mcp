@@ -86,7 +86,7 @@ class BooleanBuilder:
                 "namespace": "",
                 "enumName": "BooleanOperationType",
                 "value": self.boolean_type.value,
-                "parameterId": "booleanOperationType",
+                "parameterId": "operationType",
                 "parameterName": "",
                 "libraryRelationType": "NONE",
             },
@@ -124,7 +124,7 @@ class BooleanBuilder:
             "btType": "BTFeatureDefinitionCall-1406",
             "feature": {
                 "btType": "BTMFeature-134",
-                "featureType": "boolean",
+                "featureType": "booleanBodies",
                 "name": self.name,
                 "suppressed": False,
                 "namespace": "",

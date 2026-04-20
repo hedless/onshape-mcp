@@ -131,6 +131,16 @@ class LinearPatternBuilder:
             f"#{self.distance_variable}" if self.distance_variable else f"{self.distance} in"
         )
 
+        entity_queries = [
+            {
+                "btType": "BTMIndividualQuery-138",
+                "deterministicIds": [],
+                "queryStatement": None,
+                "queryString": f'query = qCreatedBy(makeId("{fid}"));',
+            }
+            for fid in self.feature_queries
+        ]
+
         return {
             "btType": "BTFeatureDefinitionCall-1406",
             "feature": {
@@ -142,12 +152,7 @@ class LinearPatternBuilder:
                 "parameters": [
                     {
                         "btType": "BTMParameterQueryList-148",
-                        "queries": [
-                            {
-                                "btType": "BTMIndividualQuery-138",
-                                "deterministicIds": self.feature_queries,
-                            }
-                        ],
+                        "queries": entity_queries,
                         "parameterId": "entities",
                         "parameterName": "",
                         "libraryRelationType": "NONE",
@@ -207,6 +212,7 @@ class CircularPatternBuilder:
         self.angle_variable: Optional[str] = None
         self.feature_queries: List[str] = []
         self.axis = "Z"
+        self.axis_query_string: Optional[str] = None
 
     def set_count(self, count: int) -> "CircularPatternBuilder":
         """Set the number of pattern instances.
@@ -258,18 +264,31 @@ class CircularPatternBuilder:
         self.axis = axis
         return self
 
+    def set_axis_query(self, query_string: str) -> "CircularPatternBuilder":
+        """Set a custom FeatureScript axis query (e.g., a cylindrical face)."""
+        self.axis_query_string = query_string
+        return self
+
     def _build_axis_query(self) -> Dict[str, Any]:
         """Build the rotation axis query parameter.
 
-        Returns:
-            Axis query parameter dictionary
+        Default axis uses the default plane whose normal matches the rotation
+        axis (Top plane -> Z normal, Front plane -> Y normal, Right plane -> X
+        normal). The circular pattern feature accepts a planar face and uses
+        its normal as the rotation axis.
         """
-        axis_map = {
-            "X": "RIGHT",
-            "Y": "TOP",
-            "Z": "FRONT",
-        }
-        axis_value = axis_map.get(self.axis, "FRONT")
+        if self.axis_query_string:
+            query_string = self.axis_query_string
+        else:
+            axis_plane_map = {
+                "X": "Right",
+                "Y": "Front",
+                "Z": "Top",
+            }
+            plane_id = axis_plane_map.get(self.axis, "Top")
+            query_string = (
+                f'query = qCreatedBy(makeId("{plane_id}"), EntityType.FACE);'
+            )
 
         return {
             "btType": "BTMParameterQueryList-148",
@@ -278,7 +297,7 @@ class CircularPatternBuilder:
                     "btType": "BTMIndividualQuery-138",
                     "deterministicIds": [],
                     "queryStatement": None,
-                    "queryString": f'query = qCreatedBy(makeId("{axis_value}"), EntityType.EDGE);',
+                    "queryString": query_string,
                 }
             ],
             "parameterId": "axisQuery",
@@ -302,6 +321,16 @@ class CircularPatternBuilder:
             f"#{self.angle_variable}" if self.angle_variable else f"{self.angle} deg"
         )
 
+        entity_queries = [
+            {
+                "btType": "BTMIndividualQuery-138",
+                "deterministicIds": [],
+                "queryStatement": None,
+                "queryString": f'query = qCreatedBy(makeId("{fid}"));',
+            }
+            for fid in self.feature_queries
+        ]
+
         return {
             "btType": "BTFeatureDefinitionCall-1406",
             "feature": {
@@ -313,12 +342,7 @@ class CircularPatternBuilder:
                 "parameters": [
                     {
                         "btType": "BTMParameterQueryList-148",
-                        "queries": [
-                            {
-                                "btType": "BTMIndividualQuery-138",
-                                "deterministicIds": self.feature_queries,
-                            }
-                        ],
+                        "queries": entity_queries,
                         "parameterId": "entities",
                         "parameterName": "",
                         "libraryRelationType": "NONE",
