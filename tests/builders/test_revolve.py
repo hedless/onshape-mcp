@@ -96,13 +96,23 @@ class TestRevolveBuilder:
         assert entities["queries"][0]["btType"] == "BTMIndividualSketchRegionQuery-140"
         assert "sketch1" in entities["queries"][0]["queryString"]
 
-    def test_build_axis_mapping(self):
-        for axis, expected in [("X", "RIGHT"), ("Y", "TOP"), ("Z", "FRONT")]:
+    def test_build_axis_query_targets_cylindrical_face(self):
+        for axis in ("X", "Y", "Z"):
             revolve = RevolveBuilder(sketch_feature_id="s1", axis=axis)
             result = revolve.build()
             params = result["feature"]["parameters"]
             axis_param = next(p for p in params if p["parameterId"] == "axis")
-            assert expected in axis_param["queries"][0]["queryString"]
+            qs = axis_param["queries"][0]["queryString"]
+            assert "GeometryType.CYLINDER" in qs
+            assert "qNthElement" in qs
+
+    def test_build_includes_one_direction_revolve_type(self):
+        revolve = RevolveBuilder(sketch_feature_id="s1", angle=5.0)
+        result = revolve.build()
+        params = result["feature"]["parameters"]
+        rt = next(p for p in params if p["parameterId"] == "revolveType")
+        assert rt["enumName"] == "RevolveType"
+        assert rt["value"] == "ONE_DIRECTION"
 
     def test_build_angle_without_variable(self):
         revolve = RevolveBuilder(sketch_feature_id="s1", angle=180.0)

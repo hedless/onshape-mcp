@@ -90,16 +90,16 @@ class LinearPatternBuilder:
     def _build_direction_query(self) -> Dict[str, Any]:
         """Build the direction axis query parameter.
 
+        Default Part Studio planes have no edges, so the prior
+        ``qCreatedBy(makeId("FRONT"), EntityType.EDGE)`` query returned an
+        empty selection. We pick the axis of any cylindrical face in the
+        Part Studio; Onshape uses that cylinder's axis as the direction.
+        Caller must ensure a cylindrical body aligned with the desired
+        direction already exists.
+
         Returns:
             Direction query parameter dictionary
         """
-        axis_map = {
-            "X": "RIGHT",
-            "Y": "TOP",
-            "Z": "FRONT",
-        }
-        axis_value = axis_map.get(self.direction_axis, "RIGHT")
-
         return {
             "btType": "BTMParameterQueryList-148",
             "queries": [
@@ -107,7 +107,11 @@ class LinearPatternBuilder:
                     "btType": "BTMIndividualQuery-138",
                     "deterministicIds": [],
                     "queryStatement": None,
-                    "queryString": f'query = qCreatedBy(makeId("{axis_value}"), EntityType.EDGE);',
+                    "queryString": (
+                        "query = qNthElement(qGeometry(qOwnedByBody("
+                        "qBodyType(qEverything(EntityType.BODY), BodyType.SOLID), "
+                        "EntityType.FACE), GeometryType.CYLINDER), 0);"
+                    ),
                 }
             ],
             "parameterId": "directionQuery",
@@ -145,7 +149,16 @@ class LinearPatternBuilder:
                         "queries": [
                             {
                                 "btType": "BTMIndividualQuery-138",
-                                "deterministicIds": self.feature_queries,
+                                "deterministicIds": [],
+                                "queryStatement": None,
+                                "queryString": (
+                                    "query = qUnion(["
+                                    + ", ".join(
+                                        f'qCreatedBy(makeId("{fid}"))'
+                                        for fid in self.feature_queries
+                                    )
+                                    + "]);"
+                                ),
                             }
                         ],
                         "parameterId": "entities",
@@ -261,16 +274,15 @@ class CircularPatternBuilder:
     def _build_axis_query(self) -> Dict[str, Any]:
         """Build the rotation axis query parameter.
 
+        Onshape default Part Studios do not expose origin axes as queryable
+        line entities; the prior approach of querying default-plane edges
+        returns empty. We pick the axis of any cylindrical face in the Part
+        Studio. For circular patterns of cuts/features around a coaxial body
+        (the common case), this resolves to the body's symmetry axis.
+
         Returns:
             Axis query parameter dictionary
         """
-        axis_map = {
-            "X": "RIGHT",
-            "Y": "TOP",
-            "Z": "FRONT",
-        }
-        axis_value = axis_map.get(self.axis, "FRONT")
-
         return {
             "btType": "BTMParameterQueryList-148",
             "queries": [
@@ -278,7 +290,11 @@ class CircularPatternBuilder:
                     "btType": "BTMIndividualQuery-138",
                     "deterministicIds": [],
                     "queryStatement": None,
-                    "queryString": f'query = qCreatedBy(makeId("{axis_value}"), EntityType.EDGE);',
+                    "queryString": (
+                        "query = qNthElement(qGeometry(qOwnedByBody("
+                        "qBodyType(qEverything(EntityType.BODY), BodyType.SOLID), "
+                        "EntityType.FACE), GeometryType.CYLINDER), 0);"
+                    ),
                 }
             ],
             "parameterId": "axisQuery",
@@ -316,7 +332,16 @@ class CircularPatternBuilder:
                         "queries": [
                             {
                                 "btType": "BTMIndividualQuery-138",
-                                "deterministicIds": self.feature_queries,
+                                "deterministicIds": [],
+                                "queryStatement": None,
+                                "queryString": (
+                                    "query = qUnion(["
+                                    + ", ".join(
+                                        f'qCreatedBy(makeId("{fid}"))'
+                                        for fid in self.feature_queries
+                                    )
+                                    + "]);"
+                                ),
                             }
                         ],
                         "parameterId": "entities",

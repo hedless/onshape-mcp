@@ -92,18 +92,26 @@ class RevolveBuilder:
         return self
 
     def _build_axis_query(self) -> Dict[str, Any]:
-        """Build the axis query parameter based on the selected axis.
+        """Build the axis query parameter for the revolve.
+
+        Onshape default Part Studios expose default planes (Top/Front/Right)
+        and an origin point but no queryable origin axis lines, and default
+        planes have no edges. The revolve ``axis`` parameter requires a
+        Query resolving to a line-like entity (linear edge, sketch
+        construction line, or a cylindrical face whose axis is taken).
+
+        We pick the axis of any cylindrical face that exists in the Part
+        Studio. For the typical ring/cylinder workflow this resolves to the
+        body's symmetry axis, which is what callers want when they ask to
+        revolve "around Z". The :attr:`axis` attribute is currently
+        advisory only — Onshape will use whichever cylinder it finds first.
+        For correctness around X/Y, ensure a cylindrical body aligned with
+        that axis already exists, or sketch a construction line as the axis
+        source.
 
         Returns:
             Axis query parameter dictionary
         """
-        axis_map = {
-            "X": "RIGHT",
-            "Y": "TOP",
-            "Z": "FRONT",
-        }
-        axis_value = axis_map.get(self.axis, "TOP")
-
         return {
             "btType": "BTMParameterQueryList-148",
             "queries": [
@@ -111,7 +119,11 @@ class RevolveBuilder:
                     "btType": "BTMIndividualQuery-138",
                     "deterministicIds": [],
                     "queryStatement": None,
-                    "queryString": f'query = qCreatedBy(makeId("{axis_value}"), EntityType.EDGE);',
+                    "queryString": (
+                        "query = qNthElement(qGeometry(qOwnedByBody("
+                        "qBodyType(qEverything(EntityType.BODY), BodyType.SOLID), "
+                        "EntityType.FACE), GeometryType.CYLINDER), 0);"
+                    ),
                 }
             ],
             "parameterId": "axis",
@@ -170,6 +182,15 @@ class RevolveBuilder:
                         "enumName": "NewBodyOperationType",
                         "value": self.operation_type.value,
                         "parameterId": "operationType",
+                        "parameterName": "",
+                        "libraryRelationType": "NONE",
+                    },
+                    {
+                        "btType": "BTMParameterEnum-145",
+                        "namespace": "",
+                        "enumName": "RevolveType",
+                        "value": "ONE_DIRECTION",
+                        "parameterId": "revolveType",
                         "parameterName": "",
                         "libraryRelationType": "NONE",
                     },

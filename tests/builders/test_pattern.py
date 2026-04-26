@@ -88,16 +88,21 @@ class TestLinearPatternBuilder:
         params = result["feature"]["parameters"]
 
         entities = next(p for p in params if p["parameterId"] == "entities")
-        assert entities["queries"][0]["deterministicIds"] == ["f1", "f2"]
+        qs = entities["queries"][0]["queryString"]
+        assert 'qCreatedBy(makeId("f1"))' in qs
+        assert 'qCreatedBy(makeId("f2"))' in qs
+        assert "qUnion" in qs
 
-    def test_build_direction_mapping(self):
-        for axis, expected in [("X", "RIGHT"), ("Y", "TOP"), ("Z", "FRONT")]:
+    def test_build_direction_query_targets_cylindrical_face(self):
+        for axis in ("X", "Y", "Z"):
             lp = LinearPatternBuilder()
             lp.add_feature("f1").set_direction(axis)
             result = lp.build()
             params = result["feature"]["parameters"]
             dir_param = next(p for p in params if p["parameterId"] == "directionQuery")
-            assert expected in dir_param["queries"][0]["queryString"]
+            qs = dir_param["queries"][0]["queryString"]
+            assert "GeometryType.CYLINDER" in qs
+            assert "qNthElement" in qs
 
     def test_build_distance_without_variable(self):
         lp = LinearPatternBuilder(distance=2.5)
@@ -203,14 +208,27 @@ class TestCircularPatternBuilder:
         assert feature["featureType"] == "circularPattern"
         assert feature["name"] == "TestCP"
 
-    def test_build_axis_mapping(self):
-        for axis, expected in [("X", "RIGHT"), ("Y", "TOP"), ("Z", "FRONT")]:
+    def test_build_axis_query_targets_cylindrical_face(self):
+        for axis in ("X", "Y", "Z"):
             cp = CircularPatternBuilder()
             cp.add_feature("f1").set_axis(axis)
             result = cp.build()
             params = result["feature"]["parameters"]
             axis_param = next(p for p in params if p["parameterId"] == "axisQuery")
-            assert expected in axis_param["queries"][0]["queryString"]
+            qs = axis_param["queries"][0]["queryString"]
+            assert "GeometryType.CYLINDER" in qs
+            assert "qNthElement" in qs
+
+    def test_build_entities_uses_qcreatedby_for_features(self):
+        cp = CircularPatternBuilder()
+        cp.add_feature("Fabc_2").add_feature("Fdef_3")
+        result = cp.build()
+        params = result["feature"]["parameters"]
+        entities = next(p for p in params if p["parameterId"] == "entities")
+        qs = entities["queries"][0]["queryString"]
+        assert 'qCreatedBy(makeId("Fabc_2"))' in qs
+        assert 'qCreatedBy(makeId("Fdef_3"))' in qs
+        assert "qUnion" in qs
 
     def test_build_angle_without_variable(self):
         cp = CircularPatternBuilder()
