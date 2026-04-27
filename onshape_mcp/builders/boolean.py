@@ -5,11 +5,16 @@ from typing import Any, Dict, List
 
 
 class BooleanType(Enum):
-    """Boolean operation type."""
+    """Boolean operation type.
+
+    Values match Onshape's ``BooleanOperationType`` FS enum: UNION,
+    SUBTRACTION, INTERSECTION (NOT the shorter SUBTRACT/INTERSECT names —
+    those would silently fail).
+    """
 
     UNION = "UNION"
-    SUBTRACT = "SUBTRACT"
-    INTERSECT = "INTERSECT"
+    SUBTRACT = "SUBTRACTION"
+    INTERSECT = "INTERSECTION"
 
 
 class BooleanBuilder:
@@ -80,13 +85,22 @@ class BooleanBuilder:
                     "operations"
                 )
 
+        targets_queries: List[Dict[str, Any]] = []
+        if self.target_body_queries:
+            targets_queries.append(
+                {
+                    "btType": "BTMIndividualQuery-138",
+                    "deterministicIds": self.target_body_queries,
+                }
+            )
+
         parameters: List[Dict[str, Any]] = [
             {
                 "btType": "BTMParameterEnum-145",
                 "namespace": "",
                 "enumName": "BooleanOperationType",
                 "value": self.boolean_type.value,
-                "parameterId": "booleanOperationType",
+                "parameterId": "operationType",
                 "parameterName": "",
                 "libraryRelationType": "NONE",
             },
@@ -102,29 +116,72 @@ class BooleanBuilder:
                 "parameterName": "",
                 "libraryRelationType": "NONE",
             },
+            {
+                "btType": "BTMParameterQueryList-148",
+                "queries": targets_queries,
+                "parameterId": "targets",
+                "parameterName": "",
+                "libraryRelationType": "NONE",
+            },
+            {
+                "btType": "BTMParameterBoolean-144",
+                "value": False,
+                "parameterId": "offset",
+                "parameterName": "",
+                "libraryRelationType": "NONE",
+            },
+            {
+                "btType": "BTMParameterBoolean-144",
+                "value": False,
+                "parameterId": "offsetAll",
+                "parameterName": "",
+                "libraryRelationType": "NONE",
+            },
+            {
+                "btType": "BTMParameterQueryList-148",
+                "queries": [],
+                "parameterId": "entitiesToOffset",
+                "parameterName": "",
+                "libraryRelationType": "NONE",
+            },
+            {
+                "btType": "BTMParameterQuantity-147",
+                "isInteger": False,
+                "value": 0.0,
+                "units": "",
+                "expression": "0 in",
+                "parameterId": "offsetDistance",
+                "parameterName": "",
+                "libraryRelationType": "NONE",
+            },
+            {
+                "btType": "BTMParameterBoolean-144",
+                "value": False,
+                "parameterId": "oppositeDirection",
+                "parameterName": "",
+                "libraryRelationType": "NONE",
+            },
+            {
+                "btType": "BTMParameterBoolean-144",
+                "value": False,
+                "parameterId": "reFillet",
+                "parameterName": "",
+                "libraryRelationType": "NONE",
+            },
+            {
+                "btType": "BTMParameterBoolean-144",
+                "value": False,
+                "parameterId": "keepTools",
+                "parameterName": "",
+                "libraryRelationType": "NONE",
+            },
         ]
-
-        if self.target_body_queries:
-            parameters.append(
-                {
-                    "btType": "BTMParameterQueryList-148",
-                    "queries": [
-                        {
-                            "btType": "BTMIndividualQuery-138",
-                            "deterministicIds": self.target_body_queries,
-                        }
-                    ],
-                    "parameterId": "targets",
-                    "parameterName": "",
-                    "libraryRelationType": "NONE",
-                }
-            )
 
         return {
             "btType": "BTFeatureDefinitionCall-1406",
             "feature": {
                 "btType": "BTMFeature-134",
-                "featureType": "boolean",
+                "featureType": "booleanBodies",
                 "name": self.name,
                 "suppressed": False,
                 "namespace": "",

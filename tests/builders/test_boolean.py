@@ -10,8 +10,8 @@ class TestBooleanType:
 
     def test_boolean_type_values(self):
         assert BooleanType.UNION.value == "UNION"
-        assert BooleanType.SUBTRACT.value == "SUBTRACT"
-        assert BooleanType.INTERSECT.value == "INTERSECT"
+        assert BooleanType.SUBTRACT.value == "SUBTRACTION"
+        assert BooleanType.INTERSECT.value == "INTERSECTION"
 
 
 class TestBooleanBuilder:
@@ -77,7 +77,7 @@ class TestBooleanBuilder:
         assert result["btType"] == "BTFeatureDefinitionCall-1406"
         feature = result["feature"]
         assert feature["btType"] == "BTMFeature-134"
-        assert feature["featureType"] == "boolean"
+        assert feature["featureType"] == "booleanBodies"
         assert feature["name"] == "TestBool"
 
     def test_build_boolean_type_parameter(self):
@@ -88,9 +88,7 @@ class TestBooleanBuilder:
                 b.add_target_body("target1")
             result = b.build()
             params = result["feature"]["parameters"]
-            type_param = next(
-                p for p in params if p["parameterId"] == "booleanOperationType"
-            )
+            type_param = next(p for p in params if p["parameterId"] == "operationType")
             assert type_param["value"] == bt.value
 
     def test_build_tools_parameter(self):
@@ -112,14 +110,15 @@ class TestBooleanBuilder:
         targets = next(p for p in params if p["parameterId"] == "targets")
         assert targets["queries"][0]["deterministicIds"] == ["tgt1", "tgt2"]
 
-    def test_build_union_without_targets_has_no_targets_param(self):
+    def test_build_union_without_targets_emits_empty_targets(self):
         b = BooleanBuilder(boolean_type=BooleanType.UNION)
         b.add_tool_body("tool1")
         result = b.build()
         params = result["feature"]["parameters"]
 
         target_params = [p for p in params if p["parameterId"] == "targets"]
-        assert len(target_params) == 0
+        assert len(target_params) == 1
+        assert target_params[0]["queries"] == []
 
     def test_build_union_with_optional_targets(self):
         b = BooleanBuilder(boolean_type=BooleanType.UNION)
@@ -130,6 +129,7 @@ class TestBooleanBuilder:
 
         target_params = [p for p in params if p["parameterId"] == "targets"]
         assert len(target_params) == 1
+        assert target_params[0]["queries"][0]["deterministicIds"] == ["tgt1"]
 
     def test_method_chaining(self):
         b = (
