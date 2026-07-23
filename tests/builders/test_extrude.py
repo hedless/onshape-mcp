@@ -138,11 +138,11 @@ class TestExtrudeBuilder:
         assert len(entities_param["queries"]) > 0
 
         query = entities_param["queries"][0]
-        # The actual implementation uses "queryString" field with qSketchRegion
+        # Onshape's REST API rejects raw FeatureScript query text and resolved
+        # transient IDs alike; the only format that actually works is a bare
+        # featureId reference on BTMIndividualSketchRegionQuery-140.
         assert query["btType"] == "BTMIndividualSketchRegionQuery-140"
-        assert "queryString" in query
-        assert sketch_id in query["queryString"]
-        assert "qSketchRegion" in query["queryString"]
+        assert query["featureId"] == sketch_id
 
     def test_build_includes_operation_type_parameter(self):
         """Test that build() includes operation type parameter."""
