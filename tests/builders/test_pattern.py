@@ -28,7 +28,7 @@ class TestLinearPatternBuilder:
         assert lp.count == 2
         assert lp.distance_variable is None
         assert lp.feature_queries == []
-        assert lp.direction_axis == "X"
+        assert lp.direction_entity_id is None
 
     def test_initialization_with_custom_values(self):
         lp = LinearPatternBuilder(name="MyPattern", distance=2.5, count=5)
@@ -59,20 +59,26 @@ class TestLinearPatternBuilder:
         assert result is lp
         assert lp.feature_queries == ["feat1"]
 
-    def test_set_direction(self):
+    def test_set_direction_entity(self):
         lp = LinearPatternBuilder()
-        result = lp.set_direction("Z")
+        result = lp.set_direction_entity("JCC")
         assert result is lp
-        assert lp.direction_axis == "Z"
+        assert lp.direction_entity_id == "JCC"
 
     def test_build_requires_features(self):
         lp = LinearPatternBuilder()
         with pytest.raises(ValueError, match="At least one feature must be added"):
             lp.build()
 
+    def test_build_requires_direction_entity(self):
+        lp = LinearPatternBuilder()
+        lp.add_feature("f1")
+        with pytest.raises(ValueError, match="Direction entity must be set"):
+            lp.build()
+
     def test_build_structure(self):
         lp = LinearPatternBuilder(name="TestLP")
-        lp.add_feature("feat1")
+        lp.add_feature("feat1").set_direction_entity("JCC")
         result = lp.build()
 
         assert result["btType"] == "BTFeatureDefinitionCall-1406"
@@ -83,25 +89,27 @@ class TestLinearPatternBuilder:
 
     def test_build_entities_parameter(self):
         lp = LinearPatternBuilder()
-        lp.add_feature("f1").add_feature("f2")
+        lp.add_feature("f1").add_feature("f2").set_direction_entity("JCC")
         result = lp.build()
         params = result["feature"]["parameters"]
 
         entities = next(p for p in params if p["parameterId"] == "entities")
         assert entities["queries"][0]["deterministicIds"] == ["f1", "f2"]
 
-    def test_build_direction_mapping(self):
-        for axis, expected in [("X", "RIGHT"), ("Y", "TOP"), ("Z", "FRONT")]:
-            lp = LinearPatternBuilder()
-            lp.add_feature("f1").set_direction(axis)
-            result = lp.build()
-            params = result["feature"]["parameters"]
-            dir_param = next(p for p in params if p["parameterId"] == "directionQuery")
-            assert expected in dir_param["queries"][0]["queryString"]
+    def test_build_direction_query_uses_deterministic_id(self):
+        lp = LinearPatternBuilder()
+        lp.add_feature("f1").set_direction_entity("JLB")
+        result = lp.build()
+        params = result["feature"]["parameters"]
+        dir_param = next(p for p in params if p["parameterId"] == "directionQuery")
+        query = dir_param["queries"][0]
+        assert query["btType"] == "BTMIndividualQuery-138"
+        assert query["deterministicIds"] == ["JLB"]
+        assert "queryString" not in query
 
     def test_build_distance_without_variable(self):
         lp = LinearPatternBuilder(distance=2.5)
-        lp.add_feature("f1")
+        lp.add_feature("f1").set_direction_entity("JCC")
         result = lp.build()
         params = result["feature"]["parameters"]
 
@@ -112,7 +120,7 @@ class TestLinearPatternBuilder:
     def test_build_distance_with_variable(self):
         lp = LinearPatternBuilder()
         lp.set_distance(2.0, variable_name="d")
-        lp.add_feature("f1")
+        lp.add_feature("f1").set_direction_entity("JCC")
         result = lp.build()
         params = result["feature"]["parameters"]
 
@@ -121,7 +129,7 @@ class TestLinearPatternBuilder:
 
     def test_build_count_parameter(self):
         lp = LinearPatternBuilder(count=5)
-        lp.add_feature("f1")
+        lp.add_feature("f1").set_direction_entity("JCC")
         result = lp.build()
         params = result["feature"]["parameters"]
 
@@ -132,7 +140,7 @@ class TestLinearPatternBuilder:
 
     def test_build_pattern_type_is_feature(self):
         lp = LinearPatternBuilder()
-        lp.add_feature("f1")
+        lp.add_feature("f1").set_direction_entity("JCC")
         result = lp.build()
         params = result["feature"]["parameters"]
 
@@ -150,7 +158,7 @@ class TestCircularPatternBuilder:
         assert cp.angle == 360.0
         assert cp.angle_variable is None
         assert cp.feature_queries == []
-        assert cp.axis == "Z"
+        assert cp.axis_entity_id is None
 
     def test_initialization_with_custom_values(self):
         cp = CircularPatternBuilder(name="MyCircular", count=8)
@@ -181,20 +189,26 @@ class TestCircularPatternBuilder:
         assert result is cp
         assert cp.feature_queries == ["feat1"]
 
-    def test_set_axis(self):
+    def test_set_axis_entity(self):
         cp = CircularPatternBuilder()
-        result = cp.set_axis("X")
+        result = cp.set_axis_entity("JJC")
         assert result is cp
-        assert cp.axis == "X"
+        assert cp.axis_entity_id == "JJC"
 
     def test_build_requires_features(self):
         cp = CircularPatternBuilder()
         with pytest.raises(ValueError, match="At least one feature must be added"):
             cp.build()
 
+    def test_build_requires_axis_entity(self):
+        cp = CircularPatternBuilder()
+        cp.add_feature("f1")
+        with pytest.raises(ValueError, match="Axis entity must be set"):
+            cp.build()
+
     def test_build_structure(self):
         cp = CircularPatternBuilder(name="TestCP")
-        cp.add_feature("f1")
+        cp.add_feature("f1").set_axis_entity("JJC")
         result = cp.build()
 
         assert result["btType"] == "BTFeatureDefinitionCall-1406"
@@ -203,18 +217,20 @@ class TestCircularPatternBuilder:
         assert feature["featureType"] == "circularPattern"
         assert feature["name"] == "TestCP"
 
-    def test_build_axis_mapping(self):
-        for axis, expected in [("X", "RIGHT"), ("Y", "TOP"), ("Z", "FRONT")]:
-            cp = CircularPatternBuilder()
-            cp.add_feature("f1").set_axis(axis)
-            result = cp.build()
-            params = result["feature"]["parameters"]
-            axis_param = next(p for p in params if p["parameterId"] == "axisQuery")
-            assert expected in axis_param["queries"][0]["queryString"]
+    def test_build_axis_query_uses_deterministic_id(self):
+        cp = CircularPatternBuilder()
+        cp.add_feature("f1").set_axis_entity("JJC")
+        result = cp.build()
+        params = result["feature"]["parameters"]
+        axis_param = next(p for p in params if p["parameterId"] == "axisQuery")
+        query = axis_param["queries"][0]
+        assert query["btType"] == "BTMIndividualQuery-138"
+        assert query["deterministicIds"] == ["JJC"]
+        assert "queryString" not in query
 
     def test_build_angle_without_variable(self):
         cp = CircularPatternBuilder()
-        cp.add_feature("f1")
+        cp.add_feature("f1").set_axis_entity("JJC")
         result = cp.build()
         params = result["feature"]["parameters"]
 
@@ -224,7 +240,7 @@ class TestCircularPatternBuilder:
     def test_build_angle_with_variable(self):
         cp = CircularPatternBuilder()
         cp.set_angle(180.0, variable_name="ang")
-        cp.add_feature("f1")
+        cp.add_feature("f1").set_axis_entity("JJC")
         result = cp.build()
         params = result["feature"]["parameters"]
 
@@ -233,7 +249,7 @@ class TestCircularPatternBuilder:
 
     def test_build_count_parameter(self):
         cp = CircularPatternBuilder(count=6)
-        cp.add_feature("f1")
+        cp.add_feature("f1").set_axis_entity("JJC")
         result = cp.build()
         params = result["feature"]["parameters"]
 
@@ -246,10 +262,10 @@ class TestCircularPatternBuilder:
             CircularPatternBuilder(name="Chained")
             .set_count(8)
             .set_angle(270.0, variable_name="a")
-            .set_axis("Y")
+            .set_axis_entity("JJC")
             .add_feature("f1")
         )
         assert cp.count == 8
         assert cp.angle == 270.0
-        assert cp.axis == "Y"
+        assert cp.axis_entity_id == "JJC"
         assert len(cp.feature_queries) == 1

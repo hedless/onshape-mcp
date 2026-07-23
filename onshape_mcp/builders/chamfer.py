@@ -96,8 +96,6 @@ class ChamferBuilder:
                             }
                         ],
                         "parameterId": "entities",
-                        "parameterName": "",
-                        "libraryRelationType": "NONE",
                     },
                     {
                         "btType": "BTMParameterEnum-145",
@@ -105,8 +103,6 @@ class ChamferBuilder:
                         "enumName": "ChamferType",
                         "value": self.chamfer_type.value,
                         "parameterId": "chamferType",
-                        "parameterName": "",
-                        "libraryRelationType": "NONE",
                     },
                     {
                         "btType": "BTMParameterQuantity-147",
@@ -115,8 +111,6 @@ class ChamferBuilder:
                         "units": "",
                         "expression": distance_expression,
                         "parameterId": "width",
-                        "parameterName": "",
-                        "libraryRelationType": "NONE",
                     },
                 ],
             },

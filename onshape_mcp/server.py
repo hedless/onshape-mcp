@@ -770,14 +770,19 @@ async def list_tools() -> list[Tool]:
                     },
                     "distance": {"type": "number", "description": "Distance between instances in inches"},
                     "count": {"type": "integer", "description": "Total number of instances", "default": 2},
-                    "direction": {
+                    "directionEdgeId": {
                         "type": "string",
-                        "enum": ["X", "Y", "Z"],
-                        "description": "Pattern direction axis",
-                        "default": "X",
+                        "description": (
+                            "Deterministic ID of an edge (or linear/cylindrical face) whose "
+                            "direction defines the pattern direction. Onshape has no default "
+                            "X/Y/Z axis entity -- resolve a real edge/face ID first via "
+                            "get_body_details or eval_featurescript."
+                        ),
                     },
                 },
-                "required": ["documentId", "workspaceId", "elementId", "featureIds", "distance"],
+                "required": [
+                    "documentId", "workspaceId", "elementId", "featureIds", "distance", "directionEdgeId",
+                ],
             },
         ),
         Tool(
@@ -797,14 +802,17 @@ async def list_tools() -> list[Tool]:
                     },
                     "count": {"type": "integer", "description": "Total number of instances"},
                     "angle": {"type": "number", "description": "Total angle spread in degrees", "default": 360},
-                    "axis": {
+                    "axisEdgeId": {
                         "type": "string",
-                        "enum": ["X", "Y", "Z"],
-                        "description": "Pattern axis",
-                        "default": "Z",
+                        "description": (
+                            "Deterministic ID of an edge (e.g. a circular edge) or a "
+                            "cylindrical/conical face whose implicit axis defines the rotation "
+                            "axis. Onshape has no default X/Y/Z axis entity -- resolve a real "
+                            "edge/face ID first via get_body_details or eval_featurescript."
+                        ),
                     },
                 },
-                "required": ["documentId", "workspaceId", "elementId", "featureIds", "count"],
+                "required": ["documentId", "workspaceId", "elementId", "featureIds", "count", "axisEdgeId"],
             },
         ),
         Tool(
@@ -2233,7 +2241,7 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent]:
             )
             for fid in arguments["featureIds"]:
                 pattern.add_feature(fid)
-            pattern.set_direction(arguments.get("direction", "X"))
+            pattern.set_direction_entity(arguments["directionEdgeId"])
             feature_data = pattern.build()
             result = await partstudio_manager.add_feature(
                 arguments["documentId"], arguments["workspaceId"], arguments["elementId"], feature_data,
@@ -2252,7 +2260,7 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent]:
                 count=arguments["count"],
             )
             pattern.set_angle(arguments.get("angle", 360.0))
-            pattern.set_axis(arguments.get("axis", "Z"))
+            pattern.set_axis_entity(arguments["axisEdgeId"])
             for fid in arguments["featureIds"]:
                 pattern.add_feature(fid)
             feature_data = pattern.build()

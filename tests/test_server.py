@@ -1732,7 +1732,7 @@ class TestFeatureTools:
         arguments = {
             "documentId": "d", "workspaceId": "w", "elementId": "e",
             "distance": 2.0, "count": 5, "featureIds": ["f1"],
-            "direction": "X",
+            "directionEdgeId": "JCC",
         }
 
         result = await call_tool("create_linear_pattern", arguments)
@@ -1751,6 +1751,7 @@ class TestFeatureTools:
         arguments = {
             "documentId": "d", "workspaceId": "w", "elementId": "e",
             "count": 6, "featureIds": ["f1"],
+            "axisEdgeId": "JJC",
         }
 
         result = await call_tool("create_circular_pattern", arguments)

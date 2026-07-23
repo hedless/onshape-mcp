@@ -33,7 +33,7 @@ class LinearPatternBuilder:
         self.count = count
         self.distance_variable: Optional[str] = None
         self.feature_queries: List[str] = []
-        self.direction_axis = "X"
+        self.direction_entity_id: Optional[str] = None
 
     def set_distance(
         self, distance: float, variable_name: Optional[str] = None
@@ -75,16 +75,21 @@ class LinearPatternBuilder:
         self.feature_queries.append(feature_id)
         return self
 
-    def set_direction(self, axis: str) -> "LinearPatternBuilder":
-        """Set the pattern direction axis.
+    def set_direction_entity(self, entity_id: str) -> "LinearPatternBuilder":
+        """Set the edge (or linear/cylindrical face) that defines the pattern direction.
+
+        Onshape has no always-present "X/Y/Z axis" entity to select by default --
+        the direction must be a real edge or face's deterministic ID. Use
+        get_body_details or an eval_featurescript query (e.g. qCreatedBy(makeId(
+        "<featureId>"), EntityType.EDGE) via evaluateQuery) to resolve one.
 
         Args:
-            axis: Direction axis ("X", "Y", or "Z")
+            entity_id: Deterministic ID of the edge/face defining the direction
 
         Returns:
             Self for chaining
         """
-        self.direction_axis = axis
+        self.direction_entity_id = entity_id
         return self
 
     def _build_direction_query(self) -> Dict[str, Any]:
@@ -93,26 +98,15 @@ class LinearPatternBuilder:
         Returns:
             Direction query parameter dictionary
         """
-        axis_map = {
-            "X": "RIGHT",
-            "Y": "TOP",
-            "Z": "FRONT",
-        }
-        axis_value = axis_map.get(self.direction_axis, "RIGHT")
-
         return {
             "btType": "BTMParameterQueryList-148",
             "queries": [
                 {
                     "btType": "BTMIndividualQuery-138",
-                    "deterministicIds": [],
-                    "queryStatement": None,
-                    "queryString": f'query = qCreatedBy(makeId("{axis_value}"), EntityType.EDGE);',
+                    "deterministicIds": [self.direction_entity_id],
                 }
             ],
             "parameterId": "directionQuery",
-            "parameterName": "",
-            "libraryRelationType": "NONE",
         }
 
     def build(self) -> Dict[str, Any]:
@@ -126,6 +120,11 @@ class LinearPatternBuilder:
         """
         if not self.feature_queries:
             raise ValueError("At least one feature must be added")
+        if not self.direction_entity_id:
+            raise ValueError(
+                "Direction entity must be set via set_direction_entity() before building. "
+                "Onshape has no default axis entity -- resolve a real edge/face ID first."
+            )
 
         distance_expression = (
             f"#{self.distance_variable}" if self.distance_variable else f"{self.distance} in"
@@ -149,8 +148,6 @@ class LinearPatternBuilder:
                             }
                         ],
                         "parameterId": "entities",
-                        "parameterName": "",
-                        "libraryRelationType": "NONE",
                     },
                     self._build_direction_query(),
                     {
@@ -159,8 +156,6 @@ class LinearPatternBuilder:
                         "enumName": "PatternType",
                         "value": PatternType.FEATURE.value,
                         "parameterId": "patternType",
-                        "parameterName": "",
-                        "libraryRelationType": "NONE",
                     },
                     {
                         "btType": "BTMParameterQuantity-147",
@@ -169,8 +164,6 @@ class LinearPatternBuilder:
                         "units": "",
                         "expression": distance_expression,
                         "parameterId": "distance",
-                        "parameterName": "",
-                        "libraryRelationType": "NONE",
                     },
                     {
                         "btType": "BTMParameterQuantity-147",
@@ -179,8 +172,6 @@ class LinearPatternBuilder:
                         "units": "",
                         "expression": str(self.count),
                         "parameterId": "instanceCount",
-                        "parameterName": "",
-                        "libraryRelationType": "NONE",
                     },
                 ],
             },
@@ -206,7 +197,7 @@ class CircularPatternBuilder:
         self.angle = 360.0
         self.angle_variable: Optional[str] = None
         self.feature_queries: List[str] = []
-        self.axis = "Z"
+        self.axis_entity_id: Optional[str] = None
 
     def set_count(self, count: int) -> "CircularPatternBuilder":
         """Set the number of pattern instances.
@@ -246,16 +237,22 @@ class CircularPatternBuilder:
         self.feature_queries.append(feature_id)
         return self
 
-    def set_axis(self, axis: str) -> "CircularPatternBuilder":
-        """Set the pattern rotation axis.
+    def set_axis_entity(self, entity_id: str) -> "CircularPatternBuilder":
+        """Set the edge or cylindrical/conical face that defines the rotation axis.
+
+        Onshape has no always-present "X/Y/Z axis" entity to select by default --
+        the axis must be a real edge or face's deterministic ID (e.g. a circular
+        edge, or a cylindrical face whose implicit axis is used). Use
+        get_body_details or an eval_featurescript query (e.g. qCreatedBy(makeId(
+        "<featureId>"), EntityType.EDGE) via evaluateQuery) to resolve one.
 
         Args:
-            axis: Rotation axis ("X", "Y", or "Z")
+            entity_id: Deterministic ID of the edge/face defining the axis
 
         Returns:
             Self for chaining
         """
-        self.axis = axis
+        self.axis_entity_id = entity_id
         return self
 
     def _build_axis_query(self) -> Dict[str, Any]:
@@ -264,26 +261,15 @@ class CircularPatternBuilder:
         Returns:
             Axis query parameter dictionary
         """
-        axis_map = {
-            "X": "RIGHT",
-            "Y": "TOP",
-            "Z": "FRONT",
-        }
-        axis_value = axis_map.get(self.axis, "FRONT")
-
         return {
             "btType": "BTMParameterQueryList-148",
             "queries": [
                 {
                     "btType": "BTMIndividualQuery-138",
-                    "deterministicIds": [],
-                    "queryStatement": None,
-                    "queryString": f'query = qCreatedBy(makeId("{axis_value}"), EntityType.EDGE);',
+                    "deterministicIds": [self.axis_entity_id],
                 }
             ],
             "parameterId": "axisQuery",
-            "parameterName": "",
-            "libraryRelationType": "NONE",
         }
 
     def build(self) -> Dict[str, Any]:
@@ -297,6 +283,11 @@ class CircularPatternBuilder:
         """
         if not self.feature_queries:
             raise ValueError("At least one feature must be added")
+        if not self.axis_entity_id:
+            raise ValueError(
+                "Axis entity must be set via set_axis_entity() before building. "
+                "Onshape has no default axis entity -- resolve a real edge/face ID first."
+            )
 
         angle_expression = (
             f"#{self.angle_variable}" if self.angle_variable else f"{self.angle} deg"
@@ -320,8 +311,6 @@ class CircularPatternBuilder:
                             }
                         ],
                         "parameterId": "entities",
-                        "parameterName": "",
-                        "libraryRelationType": "NONE",
                     },
                     self._build_axis_query(),
                     {
@@ -330,8 +319,6 @@ class CircularPatternBuilder:
                         "enumName": "PatternType",
                         "value": PatternType.FEATURE.value,
                         "parameterId": "patternType",
-                        "parameterName": "",
-                        "libraryRelationType": "NONE",
                     },
                     {
                         "btType": "BTMParameterQuantity-147",
@@ -340,8 +327,6 @@ class CircularPatternBuilder:
                         "units": "",
                         "expression": angle_expression,
                         "parameterId": "angle",
-                        "parameterName": "",
-                        "libraryRelationType": "NONE",
                     },
                     {
                         "btType": "BTMParameterQuantity-147",
@@ -350,8 +335,6 @@ class CircularPatternBuilder:
                         "units": "",
                         "expression": str(self.count),
                         "parameterId": "instanceCount",
-                        "parameterName": "",
-                        "libraryRelationType": "NONE",
                     },
                 ],
             },
