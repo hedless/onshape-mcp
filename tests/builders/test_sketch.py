@@ -343,6 +343,75 @@ class TestSketchBuilderPolygon:
         for entity in sketch.entities:
             assert entity["isConstruction"] is True
 
+TRIANGLE = [(0, 0), (1, 0), (0.5, 0.9)]
+
+
+class TestSketchBuilderClosedPolyline:
+    """Test add_closed_polyline functionality."""
+
+    def test_add_closed_polyline_returns_self(self):
+        sketch = SketchBuilder()
+        result = sketch.add_closed_polyline(TRIANGLE)
+        assert result is sketch
+
+    def test_add_closed_polyline_creates_one_line_per_edge(self):
+        sketch = SketchBuilder()
+        sketch.add_closed_polyline(TRIANGLE)
+        # 3 points -> 3 edges, including the automatic closing edge
+        assert len(sketch.entities) == 3
+        for entity in sketch.entities:
+            assert entity["geometry"]["btType"] == "BTCurveGeometryLine-117"
+
+    def test_add_closed_polyline_adds_coincident_constraints(self):
+        """Coincident constraints are what make Onshape resolve a closed region."""
+        sketch = SketchBuilder()
+        sketch.add_closed_polyline(TRIANGLE)
+
+        assert len(sketch.constraints) == 3
+        for constraint in sketch.constraints:
+            assert constraint["constraintType"] == "COINCIDENT"
+
+        line_ids = [e["entityId"] for e in sketch.entities]
+        pairs = {
+            (c["parameters"][0]["value"], c["parameters"][1]["value"])
+            for c in sketch.constraints
+        }
+        expected = {
+            (f"{line_ids[i]}.end", f"{line_ids[(i + 1) % 3]}.start") for i in range(3)
+        }
+        assert pairs == expected
+
+    def test_add_closed_polyline_closing_edge_wraps_to_first_point(self):
+        sketch = SketchBuilder()
+        sketch.add_closed_polyline(TRIANGLE)
+
+        last = sketch.entities[-1]["geometry"]
+        # closing edge starts at the final supplied point
+        assert last["pntX"] == pytest.approx(0.5 * 0.0254)
+        assert last["pntY"] == pytest.approx(0.9 * 0.0254)
+
+    def test_add_closed_polyline_appends_to_existing_entities(self):
+        sketch = SketchBuilder()
+        sketch.add_circle(center=(0, 0), radius=1)
+        before = len(sketch.entities)
+        sketch.add_closed_polyline(TRIANGLE)
+        assert len(sketch.entities) == before + 3
+
+    def test_add_closed_polyline_construction(self):
+        sketch = SketchBuilder()
+        sketch.add_closed_polyline(TRIANGLE, is_construction=True)
+        for entity in sketch.entities:
+            assert entity["isConstruction"] is True
+
+    def test_add_closed_polyline_too_few_points_raises(self):
+        sketch = SketchBuilder()
+        with pytest.raises(ValueError, match="at least 3 points"):
+            sketch.add_closed_polyline([(0, 0), (1, 1)])
+
+
+class TestSketchBuilderMixed:
+    """Test combining entity types."""
+
     def test_mixed_entities(self):
         """Test combining different entity types in one sketch."""
         sketch = SketchBuilder(plane_id="plane1")

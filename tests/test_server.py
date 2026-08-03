@@ -124,6 +124,7 @@ class TestListTools:
 
         assert "create_sketch_circle" in tool_names
         assert "create_sketch_line" in tool_names
+        assert "create_sketch_polygon" in tool_names
         assert "create_sketch_arc" in tool_names
         assert "create_fillet" in tool_names
         assert "create_chamfer" in tool_names
@@ -1612,6 +1613,39 @@ class TestFeatureTools:
 
     @pytest.mark.asyncio
     @patch("onshape_mcp.server.partstudio_manager")
+    async def test_create_sketch_polygon_success(self, mock_ps):
+        """Test creating a closed polygon sketch."""
+        mock_ps.get_plane_id = AsyncMock(return_value="plane1")
+        mock_ps.add_feature = AsyncMock(
+            return_value={"feature": {"featureId": "poly123"}}
+        )
+
+        arguments = {
+            "documentId": "d", "workspaceId": "w", "elementId": "e",
+            "plane": "Top", "points": [[0, 0], [1, 0], [0.5, 0.9]],
+        }
+
+        result = await call_tool("create_sketch_polygon", arguments)
+
+        assert "polygon" in result[0].text.lower()
+        assert "poly123" in result[0].text
+
+    @pytest.mark.asyncio
+    @patch("onshape_mcp.server.partstudio_manager")
+    async def test_create_sketch_polygon_too_few_points(self, mock_ps):
+        """Test polygon with fewer than 3 points reports an error."""
+        mock_ps.get_plane_id = AsyncMock(return_value="plane1")
+        mock_ps.add_feature = AsyncMock(return_value={"feature": {"featureId": "x"}})
+
+        result = await call_tool("create_sketch_polygon", {
+            "documentId": "d", "workspaceId": "w", "elementId": "e",
+            "points": [[0, 0], [1, 1]],
+        })
+
+        assert "Error" in result[0].text
+
+    @pytest.mark.asyncio
+    @patch("onshape_mcp.server.partstudio_manager")
     async def test_create_sketch_arc_success(self, mock_ps):
         """Test creating a sketch arc."""
         mock_ps.get_plane_id = AsyncMock(return_value="plane1")
@@ -1700,7 +1734,7 @@ class TestFeatureTools:
 
         arguments = {
             "documentId": "d", "workspaceId": "w", "elementId": "e",
-            "sketchFeatureId": "sketch1", "axis": "Y", "angle": 360,
+            "sketchFeatureId": "sketch1", "axisEdgeId": "JLC", "angle": 360,
         }
 
         result = await call_tool("create_revolve", arguments)

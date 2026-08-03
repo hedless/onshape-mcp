@@ -20,7 +20,6 @@ class RevolveBuilder:
         self,
         name: str = "Revolve",
         sketch_feature_id: Optional[str] = None,
-        axis: str = "Y",
         angle: float = 360.0,
         operation_type: RevolveType = RevolveType.NEW,
     ):
@@ -29,13 +28,12 @@ class RevolveBuilder:
         Args:
             name: Name of the revolve feature
             sketch_feature_id: ID of the sketch to revolve
-            axis: Axis of revolution ("X", "Y", or "Z")
             angle: Revolve angle in degrees
             operation_type: Type of revolve operation
         """
         self.name = name
         self.sketch_feature_id = sketch_feature_id
-        self.axis = axis
+        self.axis_entity_id: Optional[str] = None
         self.angle = angle
         self.angle_variable: Optional[str] = None
         self.operation_type = operation_type
@@ -67,16 +65,21 @@ class RevolveBuilder:
         self.angle_variable = variable_name
         return self
 
-    def set_axis(self, axis: str) -> "RevolveBuilder":
-        """Set the axis of revolution.
+    def set_axis_entity(self, entity_id: str) -> "RevolveBuilder":
+        """Set the edge (or linear/cylindrical face) that defines the revolve axis.
+
+        Onshape has no always-present "X/Y/Z axis" entity to select by default --
+        the axis must be a real edge or face's deterministic ID. Use
+        get_body_details or an eval_featurescript query (e.g. qCreatedBy(makeId(
+        "<featureId>"), EntityType.EDGE) via evaluateQuery) to resolve one.
 
         Args:
-            axis: Axis string ("X", "Y", or "Z")
+            entity_id: Deterministic ID of the edge/face defining the axis
 
         Returns:
             Self for chaining
         """
-        self.axis = axis
+        self.axis_entity_id = entity_id
         return self
 
     def set_opposite_direction(self, opposite: bool = True) -> "RevolveBuilder":
@@ -92,31 +95,20 @@ class RevolveBuilder:
         return self
 
     def _build_axis_query(self) -> Dict[str, Any]:
-        """Build the axis query parameter based on the selected axis.
+        """Build the axis query parameter.
 
         Returns:
             Axis query parameter dictionary
         """
-        axis_map = {
-            "X": "RIGHT",
-            "Y": "TOP",
-            "Z": "FRONT",
-        }
-        axis_value = axis_map.get(self.axis, "TOP")
-
         return {
             "btType": "BTMParameterQueryList-148",
             "queries": [
                 {
                     "btType": "BTMIndividualQuery-138",
-                    "deterministicIds": [],
-                    "queryStatement": None,
-                    "queryString": f'query = qCreatedBy(makeId("{axis_value}"), EntityType.EDGE);',
+                    "deterministicIds": [self.axis_entity_id],
                 }
             ],
             "parameterId": "axis",
-            "parameterName": "",
-            "libraryRelationType": "NONE",
         }
 
     def build(self) -> Dict[str, Any]:
@@ -126,10 +118,15 @@ class RevolveBuilder:
             Feature definition for Onshape API
 
         Raises:
-            ValueError: If sketch feature ID is not set
+            ValueError: If sketch feature ID or axis entity is not set
         """
         if not self.sketch_feature_id:
             raise ValueError("Sketch feature ID must be set before building revolve")
+        if not self.axis_entity_id:
+            raise ValueError(
+                "Axis entity must be set via set_axis_entity() before building. "
+                "Onshape has no default axis entity -- resolve a real edge/face ID first."
+            )
 
         angle_expression = (
             f"#{self.angle_variable}" if self.angle_variable else f"{self.angle} deg"
@@ -149,19 +146,10 @@ class RevolveBuilder:
                         "queries": [
                             {
                                 "btType": "BTMIndividualSketchRegionQuery-140",
-                                "queryStatement": None,
-                                "filterInnerLoops": True,
-                                "queryString": (
-                                    f'query = qSketchRegion(id + "{self.sketch_feature_id}"'
-                                    ', true);'
-                                ),
                                 "featureId": self.sketch_feature_id,
-                                "deterministicIds": [],
                             }
                         ],
                         "parameterId": "entities",
-                        "parameterName": "",
-                        "libraryRelationType": "NONE",
                     },
                     self._build_axis_query(),
                     {
@@ -170,8 +158,6 @@ class RevolveBuilder:
                         "enumName": "NewBodyOperationType",
                         "value": self.operation_type.value,
                         "parameterId": "operationType",
-                        "parameterName": "",
-                        "libraryRelationType": "NONE",
                     },
                     {
                         "btType": "BTMParameterQuantity-147",
@@ -180,15 +166,11 @@ class RevolveBuilder:
                         "units": "",
                         "expression": angle_expression,
                         "parameterId": "revolveAngle",
-                        "parameterName": "",
-                        "libraryRelationType": "NONE",
                     },
                     {
                         "btType": "BTMParameterBoolean-144",
                         "value": self.opposite_direction,
                         "parameterId": "oppositeDirection",
-                        "parameterName": "",
-                        "libraryRelationType": "NONE",
                     },
                 ],
             },

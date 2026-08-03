@@ -22,7 +22,7 @@ class TestRevolveBuilder:
         revolve = RevolveBuilder()
         assert revolve.name == "Revolve"
         assert revolve.sketch_feature_id is None
-        assert revolve.axis == "Y"
+        assert revolve.axis_entity_id is None
         assert revolve.angle == 360.0
         assert revolve.operation_type == RevolveType.NEW
         assert revolve.opposite_direction is False
@@ -31,13 +31,11 @@ class TestRevolveBuilder:
         revolve = RevolveBuilder(
             name="MyRevolve",
             sketch_feature_id="sketch1",
-            axis="X",
             angle=180.0,
             operation_type=RevolveType.ADD,
         )
         assert revolve.name == "MyRevolve"
         assert revolve.sketch_feature_id == "sketch1"
-        assert revolve.axis == "X"
         assert revolve.angle == 180.0
         assert revolve.operation_type == RevolveType.ADD
 
@@ -60,11 +58,11 @@ class TestRevolveBuilder:
         assert revolve.angle == 90.0
         assert revolve.angle_variable == "rev_angle"
 
-    def test_set_axis(self):
+    def test_set_axis_entity(self):
         revolve = RevolveBuilder()
-        result = revolve.set_axis("Z")
+        result = revolve.set_axis_entity("JLC")
         assert result is revolve
-        assert revolve.axis == "Z"
+        assert revolve.axis_entity_id == "JLC"
 
     def test_set_opposite_direction(self):
         revolve = RevolveBuilder()
@@ -77,8 +75,14 @@ class TestRevolveBuilder:
         with pytest.raises(ValueError, match="Sketch feature ID must be set"):
             revolve.build()
 
+    def test_build_requires_axis_entity(self):
+        revolve = RevolveBuilder(sketch_feature_id="sketch1")
+        with pytest.raises(ValueError, match="Axis entity must be set"):
+            revolve.build()
+
     def test_build_structure(self):
         revolve = RevolveBuilder(name="TestRevolve", sketch_feature_id="sketch1")
+        revolve.set_axis_entity("JLC")
         result = revolve.build()
 
         assert result["btType"] == "BTFeatureDefinitionCall-1406"
@@ -89,23 +93,29 @@ class TestRevolveBuilder:
 
     def test_build_entities_parameter(self):
         revolve = RevolveBuilder(sketch_feature_id="sketch1")
+        revolve.set_axis_entity("JLC")
         result = revolve.build()
         params = result["feature"]["parameters"]
 
         entities = next(p for p in params if p["parameterId"] == "entities")
-        assert entities["queries"][0]["btType"] == "BTMIndividualSketchRegionQuery-140"
-        assert "sketch1" in entities["queries"][0]["queryString"]
+        query = entities["queries"][0]
+        assert query["btType"] == "BTMIndividualSketchRegionQuery-140"
+        assert query["featureId"] == "sketch1"
 
-    def test_build_axis_mapping(self):
-        for axis, expected in [("X", "RIGHT"), ("Y", "TOP"), ("Z", "FRONT")]:
-            revolve = RevolveBuilder(sketch_feature_id="s1", axis=axis)
-            result = revolve.build()
-            params = result["feature"]["parameters"]
-            axis_param = next(p for p in params if p["parameterId"] == "axis")
-            assert expected in axis_param["queries"][0]["queryString"]
+    def test_build_axis_query_uses_deterministic_id(self):
+        revolve = RevolveBuilder(sketch_feature_id="s1")
+        revolve.set_axis_entity("JLC")
+        result = revolve.build()
+        params = result["feature"]["parameters"]
+        axis_param = next(p for p in params if p["parameterId"] == "axis")
+        query = axis_param["queries"][0]
+        assert query["btType"] == "BTMIndividualQuery-138"
+        assert query["deterministicIds"] == ["JLC"]
+        assert "queryString" not in query
 
     def test_build_angle_without_variable(self):
         revolve = RevolveBuilder(sketch_feature_id="s1", angle=180.0)
+        revolve.set_axis_entity("JLC")
         result = revolve.build()
         params = result["feature"]["parameters"]
 
@@ -115,6 +125,7 @@ class TestRevolveBuilder:
 
     def test_build_angle_with_variable(self):
         revolve = RevolveBuilder(sketch_feature_id="s1")
+        revolve.set_axis_entity("JLC")
         revolve.set_angle(90.0, variable_name="a")
         result = revolve.build()
         params = result["feature"]["parameters"]
@@ -125,6 +136,7 @@ class TestRevolveBuilder:
     def test_build_operation_types(self):
         for op in RevolveType:
             revolve = RevolveBuilder(sketch_feature_id="s1", operation_type=op)
+            revolve.set_axis_entity("JLC")
             result = revolve.build()
             params = result["feature"]["parameters"]
             op_param = next(p for p in params if p["parameterId"] == "operationType")
@@ -132,6 +144,7 @@ class TestRevolveBuilder:
 
     def test_build_opposite_direction(self):
         revolve = RevolveBuilder(sketch_feature_id="s1")
+        revolve.set_axis_entity("JLC")
         revolve.set_opposite_direction(True)
         result = revolve.build()
         params = result["feature"]["parameters"]
@@ -143,12 +156,12 @@ class TestRevolveBuilder:
         revolve = (
             RevolveBuilder(name="Chained")
             .set_sketch("s1")
-            .set_axis("X")
+            .set_axis_entity("JLC")
             .set_angle(120.0, variable_name="ang")
             .set_opposite_direction(True)
         )
         assert revolve.sketch_feature_id == "s1"
-        assert revolve.axis == "X"
+        assert revolve.axis_entity_id == "JLC"
         assert revolve.angle == 120.0
         assert revolve.angle_variable == "ang"
         assert revolve.opposite_direction is True

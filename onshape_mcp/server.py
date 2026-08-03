@@ -650,6 +650,44 @@ async def list_tools() -> list[Tool]:
             },
         ),
         Tool(
+            name="create_sketch_polygon",
+            description=(
+                "Create a closed polygonal profile sketch from an ordered list of points. "
+                "Unlike the single-shape sketch tools, this produces one connected closed "
+                "region that can be extruded or revolved -- use it for arbitrary outlines."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "documentId": {"type": "string", "description": "Document ID"},
+                    "workspaceId": {"type": "string", "description": "Workspace ID"},
+                    "elementId": {"type": "string", "description": "Part Studio element ID"},
+                    "name": {"type": "string", "description": "Sketch name", "default": "Sketch"},
+                    "plane": {
+                        "type": "string",
+                        "enum": ["Front", "Top", "Right"],
+                        "description": "Sketch plane",
+                        "default": "Front",
+                    },
+                    "points": {
+                        "type": "array",
+                        "items": {
+                            "type": "array",
+                            "items": {"type": "number"},
+                            "minItems": 2,
+                            "maxItems": 2,
+                        },
+                        "minItems": 3,
+                        "description": (
+                            "Ordered [x, y] vertices in inches. Do not repeat the first "
+                            "point at the end -- the closing edge is added automatically."
+                        ),
+                    },
+                },
+                "required": ["documentId", "workspaceId", "elementId", "points"],
+            },
+        ),
+        Tool(
             name="create_sketch_arc",
             description="Create an arc sketch on a standard plane",
             inputSchema={
@@ -736,11 +774,14 @@ async def list_tools() -> list[Tool]:
                     "elementId": {"type": "string", "description": "Part Studio element ID"},
                     "name": {"type": "string", "description": "Revolve name", "default": "Revolve"},
                     "sketchFeatureId": {"type": "string", "description": "ID of sketch to revolve"},
-                    "axis": {
+                    "axisEdgeId": {
                         "type": "string",
-                        "enum": ["X", "Y", "Z"],
-                        "description": "Axis of revolution",
-                        "default": "Y",
+                        "description": (
+                            "Deterministic ID of an edge (or linear/cylindrical face) defining "
+                            "the axis of revolution. Onshape has no default X/Y/Z axis entity -- "
+                            "resolve a real edge/face ID first via get_body_details or "
+                            "eval_featurescript."
+                        ),
                     },
                     "angle": {"type": "number", "description": "Revolve angle in degrees", "default": 360},
                     "operationType": {
@@ -750,7 +791,7 @@ async def list_tools() -> list[Tool]:
                         "default": "NEW",
                     },
                 },
-                "required": ["documentId", "workspaceId", "elementId", "sketchFeatureId"],
+                "required": ["documentId", "workspaceId", "elementId", "sketchFeatureId", "axisEdgeId"],
             },
         ),
         Tool(
@@ -2151,6 +2192,24 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent]:
         except Exception as e:
             return [TextContent(type="text", text=f"Error creating sketch line: {str(e)}")]
 
+    elif name == "create_sketch_polygon":
+        try:
+            plane_name = arguments.get("plane", "Front")
+            plane = SketchPlane[plane_name.upper()]
+            plane_id = await partstudio_manager.get_plane_id(
+                arguments["documentId"], arguments["workspaceId"], arguments["elementId"], plane_name,
+            )
+            sketch = SketchBuilder(name=arguments.get("name", "Sketch"), plane=plane, plane_id=plane_id)
+            sketch.add_closed_polyline([tuple(p) for p in arguments["points"]])
+            feature_data = sketch.build()
+            result = await partstudio_manager.add_feature(
+                arguments["documentId"], arguments["workspaceId"], arguments["elementId"], feature_data,
+            )
+            feature_id = result.get("feature", {}).get("featureId", "unknown")
+            return [TextContent(type="text", text=f"Created closed polygon sketch ({len(arguments['points'])} points) on {plane_name} plane. Feature ID: {feature_id}")]
+        except Exception as e:
+            return [TextContent(type="text", text=f"Error creating sketch polygon: {str(e)}")]
+
     elif name == "create_sketch_arc":
         try:
             plane_name = arguments.get("plane", "Front")
@@ -2217,10 +2276,10 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent]:
             revolve = RevolveBuilder(
                 name=arguments.get("name", "Revolve"),
                 sketch_feature_id=arguments["sketchFeatureId"],
-                axis=arguments.get("axis", "Y"),
                 angle=arguments.get("angle", 360.0),
                 operation_type=op_type,
             )
+            revolve.set_axis_entity(arguments["axisEdgeId"])
             feature_data = revolve.build()
             result = await partstudio_manager.add_feature(
                 arguments["documentId"], arguments["workspaceId"], arguments["elementId"], feature_data,
