@@ -8,7 +8,7 @@ import httpx
 from dotenv import load_dotenv
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
-from mcp.types import Tool, TextContent
+from mcp.types import Tool, TextContent, ImageContent
 from loguru import logger
 
 # Load environment variables from .env file before local imports read them.
@@ -26,6 +26,7 @@ from .builders.thicken import ThickenBuilder, ThickenType
 from .api.assemblies import AssemblyManager
 from .api.featurescript import FeatureScriptManager
 from .api.export import ExportManager
+from .api.visuals import VisualsManager
 from .builders.mate import MateBuilder, MateConnectorBuilder, MateType, build_transform_matrix
 from .builders.fillet import FilletBuilder
 from .builders.chamfer import ChamferBuilder, ChamferType
@@ -58,6 +59,7 @@ document_manager = DocumentManager(client)
 assembly_manager = AssemblyManager(client)
 featurescript_manager = FeatureScriptManager(client)
 export_manager = ExportManager(client)
+visuals_manager = VisualsManager(client)
 
 
 @app.list_tools()
@@ -904,6 +906,51 @@ async def list_tools() -> list[Tool]:
                 "required": ["documentId", "workspaceId", "elementId"],
             },
         ),
+        # === Visual Verification Tools ===
+        Tool(
+            name="capture_part_studio_screenshot",
+            description="Render a shaded-view screenshot of a Part Studio's current geometry (for visual verification)",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "documentId": {"type": "string", "description": "Document ID"},
+                    "workspaceId": {"type": "string", "description": "Workspace ID"},
+                    "elementId": {"type": "string", "description": "Part Studio element ID"},
+                    "view": {
+                        "type": "string",
+                        "description": "iso/isometric, a named view (top/bottom/front/back/left/right), or a raw 12-number view matrix",
+                        "default": "iso",
+                    },
+                    "outputWidth": {"type": "integer", "description": "Image width in pixels", "default": 800},
+                    "outputHeight": {"type": "integer", "description": "Image height in pixels", "default": 600},
+                    "showAllParts": {"type": "boolean", "description": "Show all parts regardless of visibility settings", "default": True},
+                    "outputPath": {"type": "string", "description": "Optional local file path to also save the PNG to"},
+                },
+                "required": ["documentId", "workspaceId", "elementId"],
+            },
+        ),
+        Tool(
+            name="capture_assembly_screenshot",
+            description="Render a shaded-view screenshot of an Assembly's current geometry (for visual verification)",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "documentId": {"type": "string", "description": "Document ID"},
+                    "workspaceId": {"type": "string", "description": "Workspace ID"},
+                    "elementId": {"type": "string", "description": "Assembly element ID"},
+                    "view": {
+                        "type": "string",
+                        "description": "iso/isometric, a named view (top/bottom/front/back/left/right), or a raw 12-number view matrix",
+                        "default": "iso",
+                    },
+                    "outputWidth": {"type": "integer", "description": "Image width in pixels", "default": 800},
+                    "outputHeight": {"type": "integer", "description": "Image height in pixels", "default": 600},
+                    "showAllParts": {"type": "boolean", "description": "Show all parts regardless of visibility settings", "default": True},
+                    "outputPath": {"type": "string", "description": "Optional local file path to also save the PNG to"},
+                },
+                "required": ["documentId", "workspaceId", "elementId"],
+            },
+        ),
         Tool(
             name="check_assembly_interference",
             description="Check for overlapping/interfering parts in an assembly using bounding box detection. Returns which parts overlap and by how much.",
@@ -1169,7 +1216,7 @@ async def _create_mate(
 
 
 @app.call_tool()
-async def call_tool(name: str, arguments: Any) -> list[TextContent]:
+async def call_tool(name: str, arguments: Any) -> list[TextContent | ImageContent]:
     """Handle tool calls."""
 
     if name == "create_sketch_rectangle":
@@ -2330,6 +2377,48 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent]:
             return [TextContent(type="text", text=f"Error exporting: API returned {e.response.status_code}.")]
         except Exception as e:
             return [TextContent(type="text", text=f"Error exporting: {str(e)}")]
+
+    elif name == "capture_part_studio_screenshot":
+        try:
+            result = await visuals_manager.capture_part_studio(
+                document_id=arguments["documentId"],
+                workspace_id=arguments["workspaceId"],
+                element_id=arguments["elementId"],
+                view=arguments.get("view", "iso"),
+                output_width=arguments.get("outputWidth", 800),
+                output_height=arguments.get("outputHeight", 600),
+                show_all_parts=arguments.get("showAllParts", True),
+                output_path=arguments.get("outputPath"),
+            )
+            content: list[Any] = [ImageContent(type="image", data=result["data"], mimeType=result["mimeType"])]
+            if result.get("path"):
+                content.append(TextContent(type="text", text=f"Saved to {result['path']}"))
+            return content
+        except httpx.HTTPStatusError as e:
+            return [TextContent(type="text", text=f"Error capturing screenshot: API returned {e.response.status_code}.")]
+        except Exception as e:
+            return [TextContent(type="text", text=f"Error capturing screenshot: {str(e)}")]
+
+    elif name == "capture_assembly_screenshot":
+        try:
+            result = await visuals_manager.capture_assembly(
+                document_id=arguments["documentId"],
+                workspace_id=arguments["workspaceId"],
+                element_id=arguments["elementId"],
+                view=arguments.get("view", "iso"),
+                output_width=arguments.get("outputWidth", 800),
+                output_height=arguments.get("outputHeight", 600),
+                show_all_parts=arguments.get("showAllParts", True),
+                output_path=arguments.get("outputPath"),
+            )
+            content: list[Any] = [ImageContent(type="image", data=result["data"], mimeType=result["mimeType"])]
+            if result.get("path"):
+                content.append(TextContent(type="text", text=f"Saved to {result['path']}"))
+            return content
+        except httpx.HTTPStatusError as e:
+            return [TextContent(type="text", text=f"Error capturing screenshot: API returned {e.response.status_code}.")]
+        except Exception as e:
+            return [TextContent(type="text", text=f"Error capturing screenshot: {str(e)}")]
 
     elif name == "export_assembly":
         try:
