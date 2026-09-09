@@ -252,3 +252,83 @@ class TestExtrudeBuilder:
         depth_param = next(p for p in parameters if p["parameterId"] == "depth")
 
         assert depth_param["value"] == -5.0
+
+    def test_set_draft_returns_self(self):
+        """Test that set_draft returns self for chaining."""
+        extrude = ExtrudeBuilder()
+        result = extrude.set_draft(5.0)
+
+        assert result is extrude
+
+    def test_set_draft_stores_values(self):
+        """Test that set_draft stores angle and direction."""
+        extrude = ExtrudeBuilder()
+        extrude.set_draft(7.5, pull_direction=True)
+
+        assert extrude.draft_angle == 7.5
+        assert extrude.draft_pull_direction is True
+
+    def test_build_without_draft(self):
+        """Test that build without draft does not include draft parameters."""
+        extrude = ExtrudeBuilder(sketch_feature_id="sketch1")
+
+        result = extrude.build()
+        parameters = result["feature"]["parameters"]
+
+        param_ids = [p["parameterId"] for p in parameters]
+        assert "hasDraft" not in param_ids
+        assert "draftAngle" not in param_ids
+        assert "draftPullDirection" not in param_ids
+        assert len(parameters) == 4  # entities, operationType, depth, oppositeDirection
+
+    def test_build_with_draft_angle(self):
+        """Test that build with draft includes all draft parameters."""
+        extrude = ExtrudeBuilder(sketch_feature_id="sketch1", depth=4.0)
+        extrude.set_draft(5.0)
+
+        result = extrude.build()
+        parameters = result["feature"]["parameters"]
+
+        # Should have 7 params: 4 base + 3 draft
+        assert len(parameters) == 7
+
+        has_draft = next(p for p in parameters if p["parameterId"] == "hasDraft")
+        assert has_draft["btType"] == "BTMParameterBoolean-144"
+        assert has_draft["value"] is True
+
+        draft_angle = next(p for p in parameters if p["parameterId"] == "draftAngle")
+        assert draft_angle["btType"] == "BTMParameterQuantity-147"
+        assert draft_angle["expression"] == "5.0 deg"
+        assert draft_angle["value"] == 5.0
+
+        draft_dir = next(p for p in parameters if p["parameterId"] == "draftPullDirection")
+        assert draft_dir["btType"] == "BTMParameterBoolean-144"
+        assert draft_dir["value"] is False  # Default: taper inward
+
+    def test_build_with_draft_pull_direction(self):
+        """Test draft with pull direction set to True (outward taper)."""
+        extrude = ExtrudeBuilder(sketch_feature_id="sketch1")
+        extrude.set_draft(3.0, pull_direction=True)
+
+        result = extrude.build()
+        parameters = result["feature"]["parameters"]
+
+        draft_dir = next(p for p in parameters if p["parameterId"] == "draftPullDirection")
+        assert draft_dir["value"] is True
+
+    def test_method_chaining_with_draft(self):
+        """Test chaining set_depth and set_draft."""
+        extrude = (
+            ExtrudeBuilder(name="TaperedLeg", sketch_feature_id="sketch1")
+            .set_depth(4.0)
+            .set_draft(5.0)
+        )
+
+        assert extrude.depth == 4.0
+        assert extrude.draft_angle == 5.0
+
+        result = extrude.build()
+        parameters = result["feature"]["parameters"]
+        param_ids = [p["parameterId"] for p in parameters]
+        assert "hasDraft" in param_ids
+        assert "draftAngle" in param_ids

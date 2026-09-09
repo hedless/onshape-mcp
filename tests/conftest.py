@@ -65,8 +65,13 @@ def sample_feature_response():
 
 @pytest.fixture
 def sample_variables():
-    """Provide sample variable data."""
+    """Provide sample variable data (nested format from Onshape API)."""
     return [
-        {"name": "width", "expression": "10 in", "description": "Width of the part"},
-        {"name": "height", "expression": "5 in", "description": "Height of the part"},
+        {
+            "variableStudioReference": None,
+            "variables": [
+                {"name": "width", "expression": "10 in", "type": "LENGTH", "description": "Width of the part"},
+                {"name": "height", "expression": "5 in", "type": "LENGTH"},
+            ],
+        }
     ]
