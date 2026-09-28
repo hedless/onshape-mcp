@@ -2507,7 +2507,7 @@ class TestGetFaceCoordinateSystem:
             new_callable=AsyncMock,
             return_value=FaceCoordinateSystem(
                 origin_meters=(0.0254, 0.0508, 0.0762),
-                origin_inches=(1.0, 2.0, 3.0),
+                origin=(1.0, 2.0, 3.0),
                 x_axis=(1.0, 0.0, 0.0),
                 y_axis=(0.0, 1.0, 0.0),
                 z_axis=(0.0, 0.0, 1.0),

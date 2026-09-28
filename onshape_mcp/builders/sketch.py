@@ -4,6 +4,8 @@ import math
 from typing import Any, Dict, List, Tuple, Optional
 from enum import Enum
 
+from ..units import to_meters
+
 
 class SketchPlane(Enum):
     """Standard sketch planes."""
@@ -61,8 +63,8 @@ class SketchBuilder:
         parallel, coincident, horizontal, and optional dimensional constraints).
 
         Args:
-            corner1: First corner (x, y) in inches
-            corner2: Opposite corner (x, y) in inches
+            corner1: First corner (x, y) in the configured length unit
+            corner2: Opposite corner (x, y) in the configured length unit
             variable_width: Optional variable name for width
             variable_height: Optional variable name for height
 
@@ -71,10 +73,6 @@ class SketchBuilder:
         """
         x1, y1 = corner1
         x2, y2 = corner2
-
-        # Convert inches to meters for Onshape API
-        def to_meters(inches: float) -> float:
-            return inches * 0.0254
 
         x1_m, y1_m = to_meters(x1), to_meters(y1)
         x2_m, y2_m = to_meters(x2), to_meters(y2)
@@ -368,17 +366,14 @@ class SketchBuilder:
         """Add a circle to the sketch.
 
         Args:
-            center: Center point (x, y) in inches
-            radius: Radius in inches
+            center: Center point (x, y) in the configured length unit
+            radius: Radius in the configured length unit
             is_construction: Whether this is construction geometry
 
         Returns:
             Self for chaining
         """
         cx, cy = center
-
-        def to_meters(inches: float) -> float:
-            return inches * 0.0254
 
         cx_m, cy_m = to_meters(cx), to_meters(cy)
         radius_m = to_meters(radius)
@@ -490,8 +485,8 @@ class SketchBuilder:
         """Add an arc to the sketch.
 
         Args:
-            center: Center point (x, y) in inches
-            radius: Radius in inches
+            center: Center point (x, y) in the configured length unit
+            radius: Radius in the configured length unit
             start_angle: Start angle in degrees (0 = positive X direction)
             end_angle: End angle in degrees
             is_construction: Whether this is construction geometry
@@ -500,9 +495,6 @@ class SketchBuilder:
             Self for chaining
         """
         cx, cy = center
-
-        def to_meters(inches: float) -> float:
-            return inches * 0.0254
 
         cx_m, cy_m = to_meters(cx), to_meters(cy)
         radius_m = to_meters(radius)
@@ -545,8 +537,8 @@ class SketchBuilder:
         """Add a line segment to the sketch.
 
         Args:
-            start: Start point (x, y) in inches
-            end: End point (x, y) in inches
+            start: Start point (x, y) in the configured length unit
+            end: End point (x, y) in the configured length unit
             is_construction: Whether this is construction geometry
 
         Returns:
@@ -554,9 +546,6 @@ class SketchBuilder:
         """
         sx, sy = start
         ex, ey = end
-
-        def to_meters(inches: float) -> float:
-            return inches * 0.0254
 
         sx_m, sy_m = to_meters(sx), to_meters(sy)
         ex_m, ey_m = to_meters(ex), to_meters(ey)
@@ -603,9 +592,9 @@ class SketchBuilder:
         Creates a polygon inscribed in a circle of the given radius.
 
         Args:
-            center: Center point (x, y) in inches
+            center: Center point (x, y) in the configured length unit
             sides: Number of sides (3 for triangle, 6 for hexagon, etc.)
-            radius: Circumscribed radius in inches
+            radius: Circumscribed radius in the configured length unit
             is_construction: Whether this is construction geometry
 
         Returns:

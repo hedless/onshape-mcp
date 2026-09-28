@@ -57,6 +57,20 @@ ONSHAPE_ACCESS_KEY=your_access_key
 ONSHAPE_SECRET_KEY=your_secret_key
 ```
 
+### Length unit
+
+Tools take and report lengths in inches. Set `ONSHAPE_LENGTH_UNIT` to `mm`, `cm` or `m` to work
+in metric instead, in the environment or in `.env`:
+
+```
+ONSHAPE_LENGTH_UNIT=cm
+```
+
+The unit applies to every length argument (sketch coordinates, depths, radii, offsets, positions,
+mate limits) and every length in tool output. Features are created with expressions in that unit,
+so Onshape shows `2.5 cm` rather than a converted inch value. Angles stay in degrees. Restart the
+server after changing it.
+
 ## Getting Onshape API Keys
 
 1. Go to [Onshape Developer Portal](https://dev-portal.onshape.com/)
@@ -131,7 +145,7 @@ For complete setup instructions, see [docs/QUICK_START.md](docs/QUICK_START.md).
 | `create_assembly` | Create a new Assembly in a document |
 | `add_assembly_instance` | Add a part or sub-assembly instance to an assembly |
 | `get_assembly` | Get assembly structure with instances and occurrences |
-| `transform_instance` | Apply a relative transform (inches/degrees). Fails on fixed instances. |
+| `transform_instance` | Apply a relative transform (length unit/degrees). Fails on fixed instances. |
 | `set_instance_position` | Set absolute position (resets rotation). Fails on fixed instances. |
 | `align_instance_to_face` | Align one instance flush against a face of another |
 | `create_mate_connector` | Create an explicit mate connector on a face with offsets |
@@ -145,7 +159,7 @@ For complete setup instructions, see [docs/QUICK_START.md](docs/QUICK_START.md).
 
 | Tool | Description |
 |------|-------------|
-| `get_assembly_positions` | Get positions, sizes, and bounds of all instances (in inches) |
+| `get_assembly_positions` | Get positions, sizes, and bounds of all instances |
 | `get_assembly_features` | Get all features with their state (OK/ERROR/SUPPRESSED) |
 | `get_body_details` | Get face IDs, surface types, normals, and origins for all parts |
 | `get_face_coordinate_system` | Query the outward-facing coordinate system for a specific face |
@@ -160,7 +174,7 @@ For complete setup instructions, see [docs/QUICK_START.md](docs/QUICK_START.md).
 | `create_sketch_line` | Line from start point to end point |
 | `create_sketch_arc` | Arc with center, radius, start angle, and end angle |
 
-All sketch tools support `plane` (Front/Top/Right) and `name` parameters. Dimensions are in inches.
+All sketch tools support `plane` (Front/Top/Right) and `name` parameters. Dimensions are in the [configured length unit](#length-unit).
 
 ### Feature Tools
 

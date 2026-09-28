@@ -231,7 +231,7 @@ class TestCheckAssemblyInterference:
         assert result.total_instances == 2
         assert result.total_pairs_checked == 1
         assert len(result.overlaps) == 1
-        assert result.overlaps[0].overlap_x_inches == pytest.approx(0.5, abs=0.01)
+        assert result.overlaps[0].overlap_x == pytest.approx(0.5, abs=0.01)
 
     @pytest.mark.asyncio
     async def test_non_overlapping_instances(self):

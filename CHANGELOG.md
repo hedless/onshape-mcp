@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `ONSHAPE_LENGTH_UNIT` (`in`, `mm`, `cm` or `m`) sets the unit for every length the tools take
+  and report. Features are created with expressions in that unit. Defaults to inches.
+
+### Changed
+
+- Length fields in the analysis dataclasses lost their `_inches` suffix
+  (`InstancePositionInfo.position_x`, `OverlapInfo.overlap_x`, `OverlapInfo.overlap_volume`,
+  `FaceCoordinateSystem.origin`), and `set_absolute_position` takes `x`, `y` and `z`.
+
 ## [0.4.0] - 2026-09-10
 
 Every feature-creation tool had been rejected by the Onshape API since mid-2026, and a fresh
