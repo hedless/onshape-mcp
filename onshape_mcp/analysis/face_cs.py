@@ -5,8 +5,7 @@ from typing import Any, Dict, Tuple
 
 from loguru import logger
 
-
-METERS_TO_INCHES = 1.0 / 0.0254
+from ..units import from_meters
 
 
 @dataclass
@@ -18,7 +17,7 @@ class FaceCoordinateSystem:
     """
 
     origin_meters: Tuple[float, float, float]
-    origin_inches: Tuple[float, float, float]
+    origin: Tuple[float, float, float]  # in the configured length unit
     x_axis: Tuple[float, float, float]
     y_axis: Tuple[float, float, float]
     z_axis: Tuple[float, float, float]  # outward face normal
@@ -81,11 +80,7 @@ def _parse_mated_cs(mated_cs: Dict[str, Any]) -> FaceCoordinateSystem:
 
     return FaceCoordinateSystem(
         origin_meters=(ox, oy, oz),
-        origin_inches=(
-            ox * METERS_TO_INCHES,
-            oy * METERS_TO_INCHES,
-            oz * METERS_TO_INCHES,
-        ),
+        origin=(from_meters(ox), from_meters(oy), from_meters(oz)),
         x_axis=(float(x_axis[0]), float(x_axis[1]), float(x_axis[2])),
         y_axis=(float(y_axis[0]), float(y_axis[1]), float(y_axis[2])),
         z_axis=(float(z_axis[0]), float(z_axis[1]), float(z_axis[2])),

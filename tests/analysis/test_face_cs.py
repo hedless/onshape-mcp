@@ -33,9 +33,9 @@ class TestExtractMCCoordinateSystem:
         assert cs.z_axis == (0.0, 0.0, 1.0)
         assert cs.x_axis == (1.0, 0.0, 0.0)
         assert cs.y_axis == (0.0, 1.0, 0.0)
-        assert abs(cs.origin_inches[0] - 1.0) < 1e-6
-        assert abs(cs.origin_inches[1] - 2.0) < 1e-6
-        assert abs(cs.origin_inches[2] - 3.0) < 1e-6
+        assert abs(cs.origin[0] - 1.0) < 1e-6
+        assert abs(cs.origin[1] - 2.0) < 1e-6
+        assert abs(cs.origin[2] - 3.0) < 1e-6
         assert cs.origin_meters == (0.0254, 0.0508, 0.0762)
 
     def test_extracts_from_featureData_matedCS(self):
@@ -82,7 +82,7 @@ class TestExtractMCCoordinateSystem:
         cs = extract_mc_coordinate_system(assembly_data, "mc_live")
         assert cs is not None
         assert cs.z_axis == (0.0, 1.0, 0.0)
-        assert abs(cs.origin_inches[2] - 15.0) < 0.01
+        assert abs(cs.origin[2] - 15.0) < 0.01
 
     def test_extracts_from_mateConnectors_list(self):
         assembly_data = {
@@ -204,7 +204,7 @@ class TestQueryFaceCoordinateSystem:
         )
 
         assert cs.z_axis == (0.0, 0.0, 1.0)
-        assert abs(cs.origin_inches[0] - 1.0) < 1e-6
+        assert abs(cs.origin[0] - 1.0) < 1e-6
 
         # Verify all 3 API calls were made
         manager.add_feature.assert_called_once()

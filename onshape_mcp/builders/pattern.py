@@ -3,6 +3,7 @@
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
+from ..units import length_expression
 from .axis_helper import FACE_QUERY_FOR_DIRECTION, normalize_axis
 
 
@@ -27,7 +28,7 @@ class LinearPatternBuilder:
 
         Args:
             name: Name of the pattern feature
-            distance: Spacing between instances in inches
+            distance: Spacing between instances in the configured length unit
             count: Total number of instances including the original
         """
         self.name = name
@@ -96,7 +97,9 @@ class LinearPatternBuilder:
             raise ValueError("At least one feature must be added")
 
         distance_expression = (
-            f"#{self.distance_variable}" if self.distance_variable else f"{self.distance} in"
+            f"#{self.distance_variable}"
+            if self.distance_variable
+            else length_expression(self.distance)
         )
 
         return {

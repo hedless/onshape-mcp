@@ -4,6 +4,8 @@ import math
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
+from ..units import to_meters
+
 
 class MateType(Enum):
     """Assembly mate type."""
@@ -106,14 +108,14 @@ class MateConnectorBuilder:
         return self
 
     def set_translation(self, x: float, y: float, z: float) -> "MateConnectorBuilder":
-        """Set offset from face center in inches.
+        """Set offset from face center in the configured length unit.
 
         Enables the transform parameters on the mate connector.
 
         Args:
-            x: X offset in inches
-            y: Y offset in inches
-            z: Z offset in inches
+            x: X offset in the configured length unit
+            y: Y offset in the configured length unit
+            z: Z offset in the configured length unit
 
         Returns:
             Self for chaining
@@ -194,9 +196,9 @@ class MateConnectorBuilder:
             )
 
         if self._transform_enabled:
-            tx_m = self._translation_x * 0.0254
-            ty_m = self._translation_y * 0.0254
-            tz_m = self._translation_z * 0.0254
+            tx_m = to_meters(self._translation_x)
+            ty_m = to_meters(self._translation_y)
+            tz_m = to_meters(self._translation_z)
             parameters.append(
                 {
                     "btType": "BTMParameterBoolean-144",
@@ -302,12 +304,12 @@ class MateBuilder:
     def set_limits(self, min_value: float, max_value: float) -> "MateBuilder":
         """Set motion limits for the mate.
 
-        For SLIDER/CYLINDRICAL mates: values are in inches (converted to meters).
+        For SLIDER/CYLINDRICAL mates: lengths in the configured unit (converted to meters).
         For REVOLUTE mates: values are in degrees (converted to radians).
 
         Args:
-            min_value: Minimum travel (inches for slider, degrees for revolute)
-            max_value: Maximum travel (inches for slider, degrees for revolute)
+            min_value: Minimum travel (length unit for slider, degrees for revolute)
+            max_value: Maximum travel (length unit for slider, degrees for revolute)
 
         Returns:
             Self for chaining
@@ -367,8 +369,8 @@ class MateBuilder:
                 }
             )
             if self.mate_type in (MateType.SLIDER, MateType.CYLINDRICAL):
-                min_m = self.min_limit * 0.0254
-                max_m = self.max_limit * 0.0254
+                min_m = to_meters(self.min_limit)
+                max_m = to_meters(self.max_limit)
                 params.append(
                     {
                         "btType": "BTMParameterNullableQuantity-807",
@@ -422,14 +424,14 @@ def build_transform_matrix(
 ) -> List[float]:
     """Build a 4x4 transformation matrix (row-major, 16 elements).
 
-    Translation values are in inches (converted to meters).
+    Translation values are in the configured length unit (converted to meters).
     Rotation values are in degrees (converted to radians).
     Rotation order is Rz * Ry * Rx.
 
     Args:
-        tx: X translation in inches
-        ty: Y translation in inches
-        tz: Z translation in inches
+        tx: X translation in the configured length unit
+        ty: Y translation in the configured length unit
+        tz: Z translation in the configured length unit
         rx: X rotation in degrees
         ry: Y rotation in degrees
         rz: Z rotation in degrees
@@ -437,10 +439,9 @@ def build_transform_matrix(
     Returns:
         16-element list representing the 4x4 transformation matrix
     """
-    # Convert inches to meters
-    tx_m = tx * 0.0254
-    ty_m = ty * 0.0254
-    tz_m = tz * 0.0254
+    tx_m = to_meters(tx)
+    ty_m = to_meters(ty)
+    tz_m = to_meters(tz)
 
     # Convert degrees to radians
     rx_r = math.radians(rx)

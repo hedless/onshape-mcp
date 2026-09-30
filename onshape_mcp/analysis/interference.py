@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from loguru import logger
 
-METERS_TO_INCHES = 1.0 / 0.0254
+from ..units import format_length, from_meters, length_unit
 
 
 @dataclass
@@ -34,16 +34,19 @@ class BoundingBox:
 
 @dataclass
 class OverlapInfo:
-    """Details about an overlap between two instances."""
+    """Details about an overlap between two instances.
+
+    Overlaps are in the configured length unit, the volume in that unit cubed.
+    """
 
     instance_a_name: str
     instance_a_id: str
     instance_b_name: str
     instance_b_id: str
-    overlap_x_inches: float
-    overlap_y_inches: float
-    overlap_z_inches: float
-    overlap_volume_cubic_inches: float
+    overlap_x: float
+    overlap_y: float
+    overlap_z: float
+    overlap_volume: float
 
 
 @dataclass
@@ -249,14 +252,10 @@ async def check_assembly_interference(
                         instance_a_id=inst_a["id"],
                         instance_b_name=inst_b.get("name", "Unknown"),
                         instance_b_id=inst_b["id"],
-                        overlap_x_inches=ox * METERS_TO_INCHES,
-                        overlap_y_inches=oy * METERS_TO_INCHES,
-                        overlap_z_inches=oz * METERS_TO_INCHES,
-                        overlap_volume_cubic_inches=(
-                            (ox * METERS_TO_INCHES)
-                            * (oy * METERS_TO_INCHES)
-                            * (oz * METERS_TO_INCHES)
-                        ),
+                        overlap_x=from_meters(ox),
+                        overlap_y=from_meters(oy),
+                        overlap_z=from_meters(oz),
+                        overlap_volume=from_meters(ox) * from_meters(oy) * from_meters(oz),
                     )
                 )
 
@@ -290,21 +289,23 @@ def format_interference_result(result: InterferenceResult) -> str:
         for i, ov in enumerate(result.overlaps, 1):
             lines.append(f'Overlap {i}: "{ov.instance_a_name}" and "{ov.instance_b_name}"')
             lines.append(
-                f'  Penetration: X={ov.overlap_x_inches:.3f}", '
-                f'Y={ov.overlap_y_inches:.3f}", '
-                f'Z={ov.overlap_z_inches:.3f}"'
+                f"  Penetration: X={format_length(ov.overlap_x)}, "
+                f"Y={format_length(ov.overlap_y)}, "
+                f"Z={format_length(ov.overlap_z)}"
             )
-            lines.append(f"  Overlap volume: {ov.overlap_volume_cubic_inches:.3f} cubic inches")
+            lines.append(f"  Overlap volume: {ov.overlap_volume:.3f} cubic {length_unit().name}")
 
             # Suggest fix along axis with smallest overlap
-            min_val = min(ov.overlap_x_inches, ov.overlap_y_inches, ov.overlap_z_inches)
-            if min_val == ov.overlap_x_inches:
+            min_val = min(ov.overlap_x, ov.overlap_y, ov.overlap_z)
+            if min_val == ov.overlap_x:
                 axis = "X"
-            elif min_val == ov.overlap_y_inches:
+            elif min_val == ov.overlap_y:
                 axis = "Y"
             else:
                 axis = "Z"
-            lines.append(f'  Suggestion: Move one part {min_val:.3f}" along {axis} to resolve')
+            lines.append(
+                f"  Suggestion: Move one part {format_length(min_val)} along {axis} to resolve"
+            )
             lines.append("")
 
     lines.append("")

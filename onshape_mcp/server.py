@@ -36,6 +36,7 @@ from .builders.axis_helper import build_axis_sketch
 from .builders.boolean import BooleanBuilder, BooleanType
 from .analysis.interference import check_assembly_interference, format_interference_result
 from .analysis.positioning import get_assembly_positions, set_absolute_position, align_to_face
+from .units import format_length, from_meters, length_unit
 
 # Configure loguru to output to stderr
 logger.remove()  # Remove default handler
@@ -88,6 +89,7 @@ async def _create_axis_edge(document_id: str, workspace_id: str, element_id: str
 @app.list_tools()
 async def list_tools() -> list[Tool]:
     """List available MCP tools."""
+    unit = length_unit().name
     return [
         Tool(
             name="create_sketch_rectangle",
@@ -110,14 +112,14 @@ async def list_tools() -> list[Tool]:
                         "items": {"type": "number"},
                         "minItems": 2,
                         "maxItems": 2,
-                        "description": "First corner [x, y] in inches",
+                        "description": f"First corner [x, y] in {unit}",
                     },
                     "corner2": {
                         "type": "array",
                         "items": {"type": "number"},
                         "minItems": 2,
                         "maxItems": 2,
-                        "description": "Second corner [x, y] in inches",
+                        "description": f"Second corner [x, y] in {unit}",
                     },
                     "variableWidth": {
                         "type": "string",
@@ -142,7 +144,7 @@ async def list_tools() -> list[Tool]:
                     "elementId": {"type": "string", "description": "Part Studio element ID"},
                     "name": {"type": "string", "description": "Extrude name", "default": "Extrude"},
                     "sketchFeatureId": {"type": "string", "description": "ID of sketch to extrude"},
-                    "depth": {"type": "number", "description": "Extrude depth in inches"},
+                    "depth": {"type": "number", "description": f"Extrude depth in {unit}"},
                     "variableDepth": {
                         "type": "string",
                         "description": "Optional variable name for depth",
@@ -173,7 +175,7 @@ async def list_tools() -> list[Tool]:
                     "elementId": {"type": "string", "description": "Part Studio element ID"},
                     "name": {"type": "string", "description": "Thicken name", "default": "Thicken"},
                     "sketchFeatureId": {"type": "string", "description": "ID of sketch to thicken"},
-                    "thickness": {"type": "number", "description": "Thickness in inches"},
+                    "thickness": {"type": "number", "description": f"Thickness in {unit}"},
                     "variableThickness": {
                         "type": "string",
                         "description": "Optional variable name for thickness",
@@ -497,7 +499,7 @@ async def list_tools() -> list[Tool]:
         ),
         Tool(
             name="transform_instance",
-            description="Apply a RELATIVE transform to an assembly instance (inches and degrees). Note: fails on fixed/grounded instances — use get_assembly_positions to check the 'fixed' flag first.",
+            description=f"Apply a RELATIVE transform to an assembly instance ({unit} and degrees). Note: fails on fixed/grounded instances — use get_assembly_positions to check the 'fixed' flag first.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -507,17 +509,17 @@ async def list_tools() -> list[Tool]:
                     "instanceId": {"type": "string", "description": "Instance ID to transform"},
                     "translateX": {
                         "type": "number",
-                        "description": "X translation in inches",
+                        "description": f"X translation in {unit}",
                         "default": 0,
                     },
                     "translateY": {
                         "type": "number",
-                        "description": "Y translation in inches",
+                        "description": f"Y translation in {unit}",
                         "default": 0,
                     },
                     "translateZ": {
                         "type": "number",
-                        "description": "Z translation in inches",
+                        "description": f"Z translation in {unit}",
                         "default": 0,
                     },
                     "rotateX": {
@@ -565,32 +567,32 @@ async def list_tools() -> list[Tool]:
                     },
                     "firstOffsetX": {
                         "type": "number",
-                        "description": "First connector X offset from face center in inches",
+                        "description": f"First connector X offset from face center in {unit}",
                         "default": 0,
                     },
                     "firstOffsetY": {
                         "type": "number",
-                        "description": "First connector Y offset from face center in inches",
+                        "description": f"First connector Y offset from face center in {unit}",
                         "default": 0,
                     },
                     "firstOffsetZ": {
                         "type": "number",
-                        "description": "First connector Z offset (along face normal) in inches",
+                        "description": f"First connector Z offset (along face normal) in {unit}",
                         "default": 0,
                     },
                     "secondOffsetX": {
                         "type": "number",
-                        "description": "Second connector X offset from face center in inches",
+                        "description": f"Second connector X offset from face center in {unit}",
                         "default": 0,
                     },
                     "secondOffsetY": {
                         "type": "number",
-                        "description": "Second connector Y offset from face center in inches",
+                        "description": f"Second connector Y offset from face center in {unit}",
                         "default": 0,
                     },
                     "secondOffsetZ": {
                         "type": "number",
-                        "description": "Second connector Z offset (along face normal) in inches",
+                        "description": f"Second connector Z offset (along face normal) in {unit}",
                         "default": 0,
                     },
                 },
@@ -639,32 +641,32 @@ async def list_tools() -> list[Tool]:
                     },
                     "firstOffsetX": {
                         "type": "number",
-                        "description": "First connector X offset in inches",
+                        "description": f"First connector X offset in {unit}",
                         "default": 0,
                     },
                     "firstOffsetY": {
                         "type": "number",
-                        "description": "First connector Y offset in inches",
+                        "description": f"First connector Y offset in {unit}",
                         "default": 0,
                     },
                     "firstOffsetZ": {
                         "type": "number",
-                        "description": "First connector Z offset in inches",
+                        "description": f"First connector Z offset in {unit}",
                         "default": 0,
                     },
                     "secondOffsetX": {
                         "type": "number",
-                        "description": "Second connector X offset in inches",
+                        "description": f"Second connector X offset in {unit}",
                         "default": 0,
                     },
                     "secondOffsetY": {
                         "type": "number",
-                        "description": "Second connector Y offset in inches",
+                        "description": f"Second connector Y offset in {unit}",
                         "default": 0,
                     },
                     "secondOffsetZ": {
                         "type": "number",
-                        "description": "Second connector Z offset in inches",
+                        "description": f"Second connector Z offset in {unit}",
                         "default": 0,
                     },
                 },
@@ -705,40 +707,40 @@ async def list_tools() -> list[Tool]:
                     },
                     "minLimit": {
                         "type": "number",
-                        "description": "Optional minimum travel limit in inches",
+                        "description": f"Optional minimum travel limit in {unit}",
                     },
                     "maxLimit": {
                         "type": "number",
-                        "description": "Optional maximum travel limit in inches",
+                        "description": f"Optional maximum travel limit in {unit}",
                     },
                     "firstOffsetX": {
                         "type": "number",
-                        "description": "First connector X offset in inches",
+                        "description": f"First connector X offset in {unit}",
                         "default": 0,
                     },
                     "firstOffsetY": {
                         "type": "number",
-                        "description": "First connector Y offset in inches",
+                        "description": f"First connector Y offset in {unit}",
                         "default": 0,
                     },
                     "firstOffsetZ": {
                         "type": "number",
-                        "description": "First connector Z offset in inches",
+                        "description": f"First connector Z offset in {unit}",
                         "default": 0,
                     },
                     "secondOffsetX": {
                         "type": "number",
-                        "description": "Second connector X offset in inches",
+                        "description": f"Second connector X offset in {unit}",
                         "default": 0,
                     },
                     "secondOffsetY": {
                         "type": "number",
-                        "description": "Second connector Y offset in inches",
+                        "description": f"Second connector Y offset in {unit}",
                         "default": 0,
                     },
                     "secondOffsetZ": {
                         "type": "number",
-                        "description": "Second connector Z offset in inches",
+                        "description": f"Second connector Z offset in {unit}",
                         "default": 0,
                     },
                 },
@@ -779,40 +781,40 @@ async def list_tools() -> list[Tool]:
                     },
                     "minLimit": {
                         "type": "number",
-                        "description": "Optional minimum axial travel limit in inches",
+                        "description": f"Optional minimum axial travel limit in {unit}",
                     },
                     "maxLimit": {
                         "type": "number",
-                        "description": "Optional maximum axial travel limit in inches",
+                        "description": f"Optional maximum axial travel limit in {unit}",
                     },
                     "firstOffsetX": {
                         "type": "number",
-                        "description": "First connector X offset in inches",
+                        "description": f"First connector X offset in {unit}",
                         "default": 0,
                     },
                     "firstOffsetY": {
                         "type": "number",
-                        "description": "First connector Y offset in inches",
+                        "description": f"First connector Y offset in {unit}",
                         "default": 0,
                     },
                     "firstOffsetZ": {
                         "type": "number",
-                        "description": "First connector Z offset in inches",
+                        "description": f"First connector Z offset in {unit}",
                         "default": 0,
                     },
                     "secondOffsetX": {
                         "type": "number",
-                        "description": "Second connector X offset in inches",
+                        "description": f"Second connector X offset in {unit}",
                         "default": 0,
                     },
                     "secondOffsetY": {
                         "type": "number",
-                        "description": "Second connector Y offset in inches",
+                        "description": f"Second connector Y offset in {unit}",
                         "default": 0,
                     },
                     "secondOffsetZ": {
                         "type": "number",
-                        "description": "Second connector Z offset in inches",
+                        "description": f"Second connector Z offset in {unit}",
                         "default": 0,
                     },
                 },
@@ -862,17 +864,17 @@ async def list_tools() -> list[Tool]:
                     },
                     "offsetX": {
                         "type": "number",
-                        "description": "X offset from face center in inches",
+                        "description": f"X offset from face center in {unit}",
                         "default": 0,
                     },
                     "offsetY": {
                         "type": "number",
-                        "description": "Y offset from face center in inches",
+                        "description": f"Y offset from face center in {unit}",
                         "default": 0,
                     },
                     "offsetZ": {
                         "type": "number",
-                        "description": "Z offset (along face normal) from face center in inches",
+                        "description": f"Z offset (along face normal) from face center in {unit}",
                         "default": 0,
                     },
                 },
@@ -898,15 +900,15 @@ async def list_tools() -> list[Tool]:
                     },
                     "centerX": {
                         "type": "number",
-                        "description": "Center X in inches",
+                        "description": f"Center X in {unit}",
                         "default": 0,
                     },
                     "centerY": {
                         "type": "number",
-                        "description": "Center Y in inches",
+                        "description": f"Center Y in {unit}",
                         "default": 0,
                     },
-                    "radius": {"type": "number", "description": "Radius in inches"},
+                    "radius": {"type": "number", "description": f"Radius in {unit}"},
                 },
                 "required": ["documentId", "workspaceId", "elementId", "radius"],
             },
@@ -932,14 +934,14 @@ async def list_tools() -> list[Tool]:
                         "items": {"type": "number"},
                         "minItems": 2,
                         "maxItems": 2,
-                        "description": "Start point [x, y] in inches",
+                        "description": f"Start point [x, y] in {unit}",
                     },
                     "endPoint": {
                         "type": "array",
                         "items": {"type": "number"},
                         "minItems": 2,
                         "maxItems": 2,
-                        "description": "End point [x, y] in inches",
+                        "description": f"End point [x, y] in {unit}",
                     },
                 },
                 "required": ["documentId", "workspaceId", "elementId", "startPoint", "endPoint"],
@@ -963,15 +965,15 @@ async def list_tools() -> list[Tool]:
                     },
                     "centerX": {
                         "type": "number",
-                        "description": "Center X in inches",
+                        "description": f"Center X in {unit}",
                         "default": 0,
                     },
                     "centerY": {
                         "type": "number",
-                        "description": "Center Y in inches",
+                        "description": f"Center Y in {unit}",
                         "default": 0,
                     },
-                    "radius": {"type": "number", "description": "Radius in inches"},
+                    "radius": {"type": "number", "description": f"Radius in {unit}"},
                     "startAngle": {
                         "type": "number",
                         "description": "Start angle in degrees (0 = positive X)",
@@ -997,7 +999,7 @@ async def list_tools() -> list[Tool]:
                     "workspaceId": {"type": "string", "description": "Workspace ID"},
                     "elementId": {"type": "string", "description": "Part Studio element ID"},
                     "name": {"type": "string", "description": "Fillet name", "default": "Fillet"},
-                    "radius": {"type": "number", "description": "Fillet radius in inches"},
+                    "radius": {"type": "number", "description": f"Fillet radius in {unit}"},
                     "edgeIds": {
                         "type": "array",
                         "items": {"type": "string"},
@@ -1021,7 +1023,7 @@ async def list_tools() -> list[Tool]:
                     "workspaceId": {"type": "string", "description": "Workspace ID"},
                     "elementId": {"type": "string", "description": "Part Studio element ID"},
                     "name": {"type": "string", "description": "Chamfer name", "default": "Chamfer"},
-                    "distance": {"type": "number", "description": "Chamfer distance in inches"},
+                    "distance": {"type": "number", "description": f"Chamfer distance in {unit}"},
                     "edgeIds": {
                         "type": "array",
                         "items": {"type": "string"},
@@ -1088,7 +1090,7 @@ async def list_tools() -> list[Tool]:
                     },
                     "distance": {
                         "type": "number",
-                        "description": "Distance between instances in inches",
+                        "description": f"Distance between instances in {unit}",
                     },
                     "count": {
                         "type": "integer",
@@ -1274,10 +1276,25 @@ async def list_tools() -> list[Tool]:
                         "description": "iso/isometric, a named view (top/bottom/front/back/left/right), or a raw 12-number view matrix",
                         "default": "iso",
                     },
-                    "outputWidth": {"type": "integer", "description": "Image width in pixels", "default": 800},
-                    "outputHeight": {"type": "integer", "description": "Image height in pixels", "default": 600},
-                    "showAllParts": {"type": "boolean", "description": "Show all parts regardless of visibility settings", "default": True},
-                    "outputPath": {"type": "string", "description": "Optional local file path to also save the PNG to"},
+                    "outputWidth": {
+                        "type": "integer",
+                        "description": "Image width in pixels",
+                        "default": 800,
+                    },
+                    "outputHeight": {
+                        "type": "integer",
+                        "description": "Image height in pixels",
+                        "default": 600,
+                    },
+                    "showAllParts": {
+                        "type": "boolean",
+                        "description": "Show all parts regardless of visibility settings",
+                        "default": True,
+                    },
+                    "outputPath": {
+                        "type": "string",
+                        "description": "Optional local file path to also save the PNG to",
+                    },
                 },
                 "required": ["documentId", "workspaceId", "elementId"],
             },
@@ -1296,10 +1313,25 @@ async def list_tools() -> list[Tool]:
                         "description": "iso/isometric, a named view (top/bottom/front/back/left/right), or a raw 12-number view matrix",
                         "default": "iso",
                     },
-                    "outputWidth": {"type": "integer", "description": "Image width in pixels", "default": 800},
-                    "outputHeight": {"type": "integer", "description": "Image height in pixels", "default": 600},
-                    "showAllParts": {"type": "boolean", "description": "Show all parts regardless of visibility settings", "default": True},
-                    "outputPath": {"type": "string", "description": "Optional local file path to also save the PNG to"},
+                    "outputWidth": {
+                        "type": "integer",
+                        "description": "Image width in pixels",
+                        "default": 800,
+                    },
+                    "outputHeight": {
+                        "type": "integer",
+                        "description": "Image height in pixels",
+                        "default": 600,
+                    },
+                    "showAllParts": {
+                        "type": "boolean",
+                        "description": "Show all parts regardless of visibility settings",
+                        "default": True,
+                    },
+                    "outputPath": {
+                        "type": "string",
+                        "description": "Optional local file path to also save the PNG to",
+                    },
                 },
                 "required": ["documentId", "workspaceId", "elementId"],
             },
@@ -1319,7 +1351,7 @@ async def list_tools() -> list[Tool]:
         ),
         Tool(
             name="get_assembly_positions",
-            description="Get positions, sizes, and world-space bounds of all instances in an assembly (in inches)",
+            description=f"Get positions, sizes, and world-space bounds of all instances in an assembly (in {unit})",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -1332,7 +1364,7 @@ async def list_tools() -> list[Tool]:
         ),
         Tool(
             name="set_instance_position",
-            description="Set an instance to an ABSOLUTE position in inches (unlike transform_instance which is relative). Resets rotation to identity. Note: fails on fixed/grounded instances (API returns 400).",
+            description=f"Set an instance to an ABSOLUTE position in {unit} (unlike transform_instance which is relative). Resets rotation to identity. Note: fails on fixed/grounded instances (API returns 400).",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -1340,9 +1372,9 @@ async def list_tools() -> list[Tool]:
                     "workspaceId": {"type": "string", "description": "Workspace ID"},
                     "elementId": {"type": "string", "description": "Assembly element ID"},
                     "instanceId": {"type": "string", "description": "Instance ID to position"},
-                    "x": {"type": "number", "description": "Absolute X position in inches"},
-                    "y": {"type": "number", "description": "Absolute Y position in inches"},
-                    "z": {"type": "number", "description": "Absolute Z position in inches"},
+                    "x": {"type": "number", "description": f"Absolute X position in {unit}"},
+                    "y": {"type": "number", "description": f"Absolute Y position in {unit}"},
+                    "z": {"type": "number", "description": f"Absolute Z position in {unit}"},
                 },
                 "required": ["documentId", "workspaceId", "elementId", "instanceId", "x", "y", "z"],
             },
@@ -1431,9 +1463,6 @@ async def list_tools() -> list[Tool]:
     ]
 
 
-METERS_TO_INCHES = 1 / 0.0254
-
-
 def _enrich_rectangular_body(
     planar_faces: list[dict],
 ) -> dict | None:
@@ -1490,10 +1519,10 @@ def _enrich_rectangular_body(
                 "is_max": i == 1,
             }
 
-    # Compute body dimensions in inches
-    lx = (bbox["x_max"] - bbox["x_min"]) * METERS_TO_INCHES
-    ly = (bbox["y_max"] - bbox["y_min"]) * METERS_TO_INCHES
-    lz = (bbox["z_max"] - bbox["z_min"]) * METERS_TO_INCHES
+    # Compute body dimensions in the configured length unit
+    lx = from_meters(bbox["x_max"] - bbox["x_min"])
+    ly = from_meters(bbox["y_max"] - bbox["y_min"])
+    lz = from_meters(bbox["z_max"] - bbox["z_min"])
 
     # Compute face dimensions (the two dimensions perpendicular to face normal)
     face_dims = {"x": (ly, lz), "y": (lx, lz), "z": (lx, ly)}
@@ -1538,8 +1567,10 @@ async def _create_mate(
     inference to place connectors at face centers.
 
     Args:
-        first_offset: Optional (x, y, z) offset in inches from first face centroid
-        second_offset: Optional (x, y, z) offset in inches from second face centroid
+        first_offset: Optional (x, y, z) offset from first face centroid, in the configured
+            length unit
+        second_offset: Optional (x, y, z) offset from second face centroid, in the configured
+            length unit
 
     Returns the mate feature ID.
     """
@@ -3048,12 +3079,19 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent | ImageConten
                 show_all_parts=arguments.get("showAllParts", True),
                 output_path=arguments.get("outputPath"),
             )
-            content: list[Any] = [ImageContent(type="image", data=result["data"], mimeType=result["mimeType"])]
+            content: list[Any] = [
+                ImageContent(type="image", data=result["data"], mimeType=result["mimeType"])
+            ]
             if result.get("path"):
                 content.append(TextContent(type="text", text=f"Saved to {result['path']}"))
             return content
         except httpx.HTTPStatusError as e:
-            return [TextContent(type="text", text=f"Error capturing screenshot: API returned {e.response.status_code}.")]
+            return [
+                TextContent(
+                    type="text",
+                    text=f"Error capturing screenshot: API returned {e.response.status_code}.",
+                )
+            ]
         except Exception as e:
             return [TextContent(type="text", text=f"Error capturing screenshot: {str(e)}")]
 
@@ -3069,12 +3107,19 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent | ImageConten
                 show_all_parts=arguments.get("showAllParts", True),
                 output_path=arguments.get("outputPath"),
             )
-            content: list[Any] = [ImageContent(type="image", data=result["data"], mimeType=result["mimeType"])]
+            content: list[Any] = [
+                ImageContent(type="image", data=result["data"], mimeType=result["mimeType"])
+            ]
             if result.get("path"):
                 content.append(TextContent(type="text", text=f"Saved to {result['path']}"))
             return content
         except httpx.HTTPStatusError as e:
-            return [TextContent(type="text", text=f"Error capturing screenshot: API returned {e.response.status_code}.")]
+            return [
+                TextContent(
+                    type="text",
+                    text=f"Error capturing screenshot: API returned {e.response.status_code}.",
+                )
+            ]
         except Exception as e:
             return [TextContent(type="text", text=f"Error capturing screenshot: {str(e)}")]
 
@@ -3151,9 +3196,9 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent | ImageConten
                 workspace_id=arguments["workspaceId"],
                 element_id=arguments["elementId"],
                 instance_id=arguments["instanceId"],
-                x_inches=arguments["x"],
-                y_inches=arguments["y"],
-                z_inches=arguments["z"],
+                x=arguments["x"],
+                y=arguments["y"],
+                z=arguments["z"],
             )
             return [TextContent(type="text", text=msg)]
         except httpx.HTTPStatusError as e:
@@ -3234,7 +3279,10 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent | ImageConten
                 if enriched:
                     dims = enriched["dimensions"]
                     part_header = f"**Body: {body_id}** (type: {body_type})"
-                    part_header += f'\n  Bounding box: {dims[0]:.3f}" x {dims[1]:.3f}" x {dims[2]:.3f}" (X x Y x Z)'
+                    part_header += (
+                        f"\n  Bounding box: {format_length(dims[0])} x {format_length(dims[1])}"
+                        f" x {format_length(dims[2])} (X x Y x Z)"
+                    )
 
                     faces_info = []
                     for face in faces:
@@ -3246,7 +3294,10 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent | ImageConten
                             ef = enriched["faces"][face_id]
                             face_line = f"  Face `{face_id}`: {surface_type}"
                             face_line += f" | {ef['label']} face"
-                            face_line += f' | {ef["width"]:.2f}" x {ef["height"]:.2f}"'
+                            face_line += (
+                                f" | {format_length(ef['width'], 2)}"
+                                f" x {format_length(ef['height'], 2)}"
+                            )
                             face_line += f" | outward normal={ef['outward_normal']}"
                         else:
                             face_line = f"  Face `{face_id}`: {surface_type}"
@@ -3367,14 +3418,14 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent | ImageConten
                 face_id=arguments["faceId"],
             )
 
-            ox, oy, oz = cs.origin_inches
+            ox, oy, oz = cs.origin
             zx, zy, zz = cs.z_axis
             xx, xy, xz = cs.x_axis
             yx, yy, yz = cs.y_axis
 
             text = (
                 f"Face `{arguments['faceId']}` coordinate system on instance `{arguments['instanceId']}`:\n\n"
-                f"  Origin: ({ox:.4f}, {oy:.4f}, {oz:.4f}) inches\n"
+                f"  Origin: ({ox:.4f}, {oy:.4f}, {oz:.4f}) {length_unit().name}\n"
                 f"  Z-axis (outward normal): ({zx:.6f}, {zy:.6f}, {zz:.6f})\n"
                 f"  X-axis: ({xx:.6f}, {xy:.6f}, {xz:.6f})\n"
                 f"  Y-axis: ({yx:.6f}, {yy:.6f}, {yz:.6f})"
@@ -3445,6 +3496,8 @@ sse_app = create_sse_app()
 
 def main():
     """Main entry point - run stdio by default."""
+    logger.info(f"Length unit: {length_unit().name}")
+
     # Check if we should run in SSE mode
     if "--sse" in sys.argv or os.getenv("MCP_TRANSPORT") == "sse":
         import uvicorn

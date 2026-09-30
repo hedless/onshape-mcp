@@ -5,6 +5,12 @@ from unittest.mock import Mock, AsyncMock
 from onshape_mcp.api.client import OnshapeClient, OnshapeCredentials
 
 
+@pytest.fixture(autouse=True)
+def default_length_unit(monkeypatch):
+    """Run every test in inches, whatever ONSHAPE_LENGTH_UNIT the local .env sets."""
+    monkeypatch.delenv("ONSHAPE_LENGTH_UNIT", raising=False)
+
+
 @pytest.fixture
 def mock_credentials():
     """Provide mock Onshape credentials."""
