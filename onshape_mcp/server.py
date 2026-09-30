@@ -186,7 +186,7 @@ async def list_tools() -> list[Tool]:
                     },
                     "midplane": {
                         "type": "boolean",
-                        "description": "Thicken symmetrically from sketch plane",
+                        "description": "Thicken symmetrically from sketch plane; thickness is then the total, half on each side",
                         "default": False,
                     },
                     "oppositeDirection": {
