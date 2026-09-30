@@ -204,6 +204,30 @@ class TestThickenBuilder:
         assert midplane_param["btType"] == "BTMParameterBoolean-144"
         assert midplane_param["value"] is True
 
+    def test_build_midplane_sets_thickness_parameter(self):
+        """Regression: with midplane Onshape reads "thickness", not "thickness1".
+
+        Sending only "thickness1" made Onshape fall back to its default thickness.
+        """
+        thicken = ThickenBuilder(name="Test", sketch_feature_id="sketch1")
+        thicken.set_thickness(0.5).set_midplane(True)
+
+        parameters = thicken.build()["feature"]["parameters"]
+
+        thickness_param = next(p for p in parameters if p["parameterId"] == "thickness")
+        assert thickness_param["btType"] == "BTMParameterQuantity-147"
+        assert thickness_param["expression"] == "0.5 in"
+
+    def test_build_midplane_sets_thickness_parameter_from_variable(self):
+        """With midplane, a variable thickness also lands in "thickness"."""
+        thicken = ThickenBuilder(name="Test", sketch_feature_id="sketch1")
+        thicken.set_thickness(0.5, variable_name="wall").set_midplane(True)
+
+        parameters = thicken.build()["feature"]["parameters"]
+
+        thickness_param = next(p for p in parameters if p["parameterId"] == "thickness")
+        assert thickness_param["expression"] == "#wall"
+
     def test_build_includes_opposite_direction_parameter(self):
         """Test that build() includes opposite direction parameter."""
         thicken = ThickenBuilder(name="Test", sketch_feature_id="sketch1")
@@ -271,13 +295,14 @@ class TestThickenBuilder:
         assert result["btType"] == "BTMFeature-134"
         assert result["name"] == "CompleteThicken"
         assert result["featureType"] == "thicken"
-        assert len(result["parameters"]) == 6
+        assert len(result["parameters"]) == 7
 
         # Verify all parameters are present
         param_ids = [p["parameterId"] for p in result["parameters"]]
         assert "operationType" in param_ids
         assert "entities" in param_ids
         assert "midplane" in param_ids
+        assert "thickness" in param_ids
         assert "thickness1" in param_ids
         assert "oppositeDirection" in param_ids
         assert "thickness2" in param_ids

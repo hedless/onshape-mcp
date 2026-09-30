@@ -127,6 +127,14 @@ class ThickenBuilder:
                     "value": self.midplane,
                     "parameterId": "midplane",
                 },
+                # Onshape reads the total thickness from "thickness" when midplane is on
+                # and from "thickness1" otherwise; the inactive one is ignored. Send both
+                # so the value applies in either mode.
+                {
+                    "btType": "BTMParameterQuantity-147",
+                    "expression": thickness_expr,
+                    "parameterId": "thickness",
+                },
                 {
                     "btType": "BTMParameterQuantity-147",
                     "expression": thickness_expr,
