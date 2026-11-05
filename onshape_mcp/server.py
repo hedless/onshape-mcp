@@ -1,5 +1,6 @@
 """Main MCP server for Onshape integration."""
 
+import json
 import os
 import sys
 import asyncio
@@ -27,6 +28,7 @@ from .api.assemblies import AssemblyManager
 from .api.featurescript import FeatureScriptManager
 from .api.export import ExportManager
 from .api.visuals import VisualsManager
+from .api.metadata import MetadataManager
 from .builders.mate import MateBuilder, MateConnectorBuilder, MateType, build_transform_matrix
 from .builders.fillet import FilletBuilder
 from .builders.chamfer import ChamferBuilder, ChamferType
@@ -61,6 +63,7 @@ assembly_manager = AssemblyManager(client)
 featurescript_manager = FeatureScriptManager(client)
 export_manager = ExportManager(client)
 visuals_manager = VisualsManager(client)
+metadata_manager = MetadataManager(client)
 
 
 async def _create_axis_edge(document_id: str, workspace_id: str, element_id: str, axis: str) -> str:
@@ -215,6 +218,139 @@ async def list_tools() -> list[Tool]:
                     "name": {"type": "string", "description": "Name for the new Variable Studio"},
                 },
                 "required": ["documentId", "workspaceId", "name"],
+            },
+        ),
+        Tool(
+            name="get_assembly_bom",
+            description="Read-only. Get an assembly's Bill of Materials as rows keyed by column name (part number, name, description, quantity, and every other BOM column). Use wvm='v' with a released version ID for the production BOM.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "documentId": {"type": "string", "description": "Document ID"},
+                    "wvm": {
+                        "type": "string",
+                        "enum": ["w", "v", "m"],
+                        "description": "Workspace (w), version (v), or microversion (m)",
+                        "default": "w",
+                    },
+                    "wvmId": {
+                        "type": "string",
+                        "description": "Workspace, version, or microversion ID",
+                    },
+                    "elementId": {"type": "string", "description": "Element ID"},
+                    "configuration": {
+                        "type": "string",
+                        "description": "Optional encoded configuration string for one variant",
+                    },
+                    "indented": {
+                        "type": "boolean",
+                        "description": "Multi-level indented BOM",
+                        "default": True,
+                    },
+                },
+                "required": ["documentId", "wvmId", "elementId"],
+            },
+        ),
+        Tool(
+            name="get_element_metadata",
+            description="Read-only. Get the metadata and properties (Part number, Name, Description, custom properties) of an element and its parts.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "documentId": {"type": "string", "description": "Document ID"},
+                    "wvm": {
+                        "type": "string",
+                        "enum": ["w", "v", "m"],
+                        "description": "Workspace (w), version (v), or microversion (m)",
+                        "default": "w",
+                    },
+                    "wvmId": {
+                        "type": "string",
+                        "description": "Workspace, version, or microversion ID",
+                    },
+                    "elementId": {"type": "string", "description": "Element ID"},
+                    "configuration": {
+                        "type": "string",
+                        "description": "Optional encoded configuration string for one variant",
+                    },
+                },
+                "required": ["documentId", "wvmId", "elementId"],
+            },
+        ),
+        Tool(
+            name="get_part_metadata",
+            description="Read-only. Get the properties of a single part (Part number, Description, custom properties).",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "documentId": {"type": "string", "description": "Document ID"},
+                    "wvm": {
+                        "type": "string",
+                        "enum": ["w", "v", "m"],
+                        "description": "Workspace (w), version (v), or microversion (m)",
+                        "default": "w",
+                    },
+                    "wvmId": {
+                        "type": "string",
+                        "description": "Workspace, version, or microversion ID",
+                    },
+                    "elementId": {"type": "string", "description": "Element ID"},
+                    "configuration": {
+                        "type": "string",
+                        "description": "Optional encoded configuration string for one variant",
+                    },
+                    "partId": {"type": "string", "description": "Part ID"},
+                },
+                "required": ["documentId", "wvmId", "elementId", "partId"],
+            },
+        ),
+        Tool(
+            name="get_configuration",
+            description="Read-only. Get an element's configuration inputs (e.g. Finish, Length), their types, and every allowed option. Works for assemblies and Part Studios. One API call.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "documentId": {"type": "string", "description": "Document ID"},
+                    "wvm": {
+                        "type": "string",
+                        "enum": ["w", "v", "m"],
+                        "description": "Workspace (w), version (v), or microversion (m)",
+                        "default": "w",
+                    },
+                    "wvmId": {
+                        "type": "string",
+                        "description": "Workspace, version, or microversion ID",
+                    },
+                    "elementId": {"type": "string", "description": "Element ID"},
+                },
+                "required": ["documentId", "wvmId", "elementId"],
+            },
+        ),
+        Tool(
+            name="get_configured_properties",
+            description="Read-only. Get the resolved properties (Part number, Name, Description, ...) for every configuration variant of an element, for checking variant part numbers against a catalog or ERP. Costs 1 + N API calls for N variants; stops with a warning above max_variants.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "documentId": {"type": "string", "description": "Document ID"},
+                    "wvm": {
+                        "type": "string",
+                        "enum": ["w", "v", "m"],
+                        "description": "Workspace (w), version (v), or microversion (m)",
+                        "default": "w",
+                    },
+                    "wvmId": {
+                        "type": "string",
+                        "description": "Workspace, version, or microversion ID",
+                    },
+                    "elementId": {"type": "string", "description": "Element ID"},
+                    "max_variants": {
+                        "type": "integer",
+                        "description": "Safety cap on the number of variants (API calls) to expand",
+                        "default": 48,
+                    },
+                },
+                "required": ["documentId", "wvmId", "elementId"],
             },
         ),
         Tool(
@@ -1802,6 +1938,59 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent | ImageConten
             logger.exception("Unexpected error creating variable studio")
             return [TextContent(type="text", text=f"Error creating variable studio: {str(e)}")]
 
+    elif name in (
+        "get_assembly_bom",
+        "get_element_metadata",
+        "get_part_metadata",
+        "get_configuration",
+        "get_configured_properties",
+    ):
+        try:
+            ids = (
+                arguments["documentId"],
+                arguments.get("wvm", "w"),
+                arguments["wvmId"],
+                arguments["elementId"],
+            )
+            if name == "get_assembly_bom":
+                bom = await metadata_manager.get_assembly_bom(
+                    *ids,
+                    indented=arguments.get("indented", True),
+                    configuration=arguments.get("configuration"),
+                )
+                payload = metadata_manager.flatten_bom_rows(bom) or bom
+            elif name == "get_element_metadata":
+                payload = await metadata_manager.get_element_metadata(
+                    *ids, configuration=arguments.get("configuration")
+                )
+            elif name == "get_part_metadata":
+                payload = await metadata_manager.get_part_metadata(
+                    *ids, arguments["partId"], configuration=arguments.get("configuration")
+                )
+            elif name == "get_configuration":
+                definition = await metadata_manager.get_configuration(*ids)
+                payload = {"parameters": metadata_manager.parse_config_params(definition)}
+            else:
+                payload = await metadata_manager.get_configured_properties(
+                    *ids, max_variants=arguments.get("max_variants", 48)
+                )
+
+            text = json.dumps(payload, indent=2, default=str)
+            if len(text) > 14000:
+                text = text[:14000] + "\n... (truncated; narrow the query)"
+            return [TextContent(type="text", text=text)]
+        except httpx.HTTPStatusError as e:
+            logger.error(f"API error in {name}: {e.response.status_code} - {e.response.text[:500]}")
+            return [
+                TextContent(
+                    type="text",
+                    text=f"Error in {name}: API returned {e.response.status_code}. Check the IDs, the wvm type, and that the API key has read access.",
+                )
+            ]
+        except Exception as e:
+            logger.exception(f"Unexpected error in {name}")
+            return [TextContent(type="text", text=f"Error in {name}: {str(e)}")]
+
     elif name == "get_variables":
         try:
             variables = await variable_manager.get_variables(
@@ -2973,7 +3162,6 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent | ImageConten
                 element_id=arguments["elementId"],
                 script=arguments["script"],
             )
-            import json
 
             return [
                 TextContent(
@@ -2997,7 +3185,6 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent | ImageConten
                 workspace_id=arguments["workspaceId"],
                 element_id=arguments["elementId"],
             )
-            import json
 
             return [TextContent(type="text", text=f"Bounding box:\n{json.dumps(result, indent=2)}")]
         except httpx.HTTPStatusError as e:

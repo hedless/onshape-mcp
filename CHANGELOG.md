@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Read-only product data tools: `get_assembly_bom`, `get_element_metadata`,
+  `get_part_metadata`, `get_configuration` and `get_configured_properties`, for reconciling
+  part numbers, BOMs and configuration variants against an ERP or catalog.
+  `get_configured_properties` expands every combination of enum configuration inputs and stops
+  with a warning above `max_variants` (default 48) before making any per-variant calls.
+
 ## [0.4.0] - 2026-09-10
 
 Every feature-creation tool had been rejected by the Onshape API since mid-2026, and a fresh
