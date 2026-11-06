@@ -197,6 +197,18 @@ All sketch tools support `plane` (Front/Top/Right) and `name` parameters. Dimens
 | `export_part_studio` | Export to STL, STEP, PARASOLID, GLTF, or OBJ (optional `partId` filter) |
 | `export_assembly` | Export to STL, STEP, or GLTF |
 
+### Product Data Tools (read-only)
+
+For reconciling CAD against an ERP, a catalog, or documentation. All accept `wvm` = `w`, `v` (use a released version for production data) or `m`.
+
+| Tool | Description |
+|------|-------------|
+| `get_assembly_bom` | Bill of Materials as rows keyed by column name (part number, name, quantity, ...) |
+| `get_element_metadata` | Metadata and properties of an element and its parts |
+| `get_part_metadata` | Properties of a single part |
+| `get_configuration` | Configuration inputs, their types, and every allowed option |
+| `get_configured_properties` | Resolved properties for every configuration variant (1 + N API calls, capped by `max_variants`) |
+
 ## Architecture
 
 ```

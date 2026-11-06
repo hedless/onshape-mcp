@@ -2603,3 +2603,88 @@ class TestUnknownTool:
         """Test calling an unknown tool."""
         with pytest.raises(ValueError, match="Unknown tool"):
             await call_tool("unknown_tool", {})
+
+
+class TestMetadataTools:
+    """Test the read-only metadata, configuration and BOM tools."""
+
+    IDS = {"documentId": "d1", "wvm": "v", "wvmId": "v1", "elementId": "e1"}
+
+    @pytest.mark.asyncio
+    async def test_list_tools_includes_metadata_tools(self):
+        tool_names = [tool.name for tool in await list_tools()]
+
+        for name in (
+            "get_assembly_bom",
+            "get_element_metadata",
+            "get_part_metadata",
+            "get_configuration",
+            "get_configured_properties",
+        ):
+            assert name in tool_names
+
+    @pytest.mark.asyncio
+    @patch("onshape_mcp.server.metadata_manager")
+    async def test_get_assembly_bom_returns_flattened_rows(self, mock_metadata):
+        from onshape_mcp.api.metadata import MetadataManager
+
+        bom = {
+            "headers": [{"id": "h1", "name": "Part number"}],
+            "rows": [{"headerIdToValue": {"h1": "PN-001"}}],
+        }
+        mock_metadata.get_assembly_bom = AsyncMock(return_value=bom)
+        mock_metadata.flatten_bom_rows = MetadataManager.flatten_bom_rows
+
+        result = await call_tool("get_assembly_bom", dict(self.IDS))
+
+        assert '"Part number": "PN-001"' in result[0].text
+        mock_metadata.get_assembly_bom.assert_called_once_with(
+            "d1", "v", "v1", "e1", indented=True, configuration=None
+        )
+
+    @pytest.mark.asyncio
+    @patch("onshape_mcp.server.metadata_manager")
+    async def test_get_part_metadata_passes_part_id(self, mock_metadata):
+        mock_metadata.get_part_metadata = AsyncMock(return_value={"properties": []})
+
+        await call_tool("get_part_metadata", {**self.IDS, "partId": "JHD"})
+
+        mock_metadata.get_part_metadata.assert_called_once_with(
+            "d1", "v", "v1", "e1", "JHD", configuration=None
+        )
+
+    @pytest.mark.asyncio
+    @patch("onshape_mcp.server.metadata_manager")
+    async def test_wvm_defaults_to_workspace(self, mock_metadata):
+        mock_metadata.get_element_metadata = AsyncMock(return_value={})
+
+        await call_tool(
+            "get_element_metadata", {"documentId": "d1", "wvmId": "w1", "elementId": "e1"}
+        )
+
+        mock_metadata.get_element_metadata.assert_called_once_with(
+            "d1", "w", "w1", "e1", configuration=None
+        )
+
+    @pytest.mark.asyncio
+    @patch("onshape_mcp.server.metadata_manager")
+    async def test_get_configured_properties_passes_cap(self, mock_metadata):
+        mock_metadata.get_configured_properties = AsyncMock(return_value={"variant_count": 0})
+
+        await call_tool("get_configured_properties", {**self.IDS, "max_variants": 5})
+
+        mock_metadata.get_configured_properties.assert_called_once_with(
+            "d1", "v", "v1", "e1", max_variants=5
+        )
+
+    @pytest.mark.asyncio
+    @patch("onshape_mcp.server.metadata_manager")
+    async def test_api_error_returns_message(self, mock_metadata):
+        response = Mock(status_code=404, text="not found")
+        mock_metadata.get_configuration = AsyncMock(
+            side_effect=httpx.HTTPStatusError("404", request=Mock(), response=response)
+        )
+
+        result = await call_tool("get_configuration", dict(self.IDS))
+
+        assert "API returned 404" in result[0].text
